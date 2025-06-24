@@ -50,7 +50,7 @@
                 <h2 class="text-xl font-bold mb-6 text-center text-gray-800">
                     <i class="fas fa-money-check-alt mr-2 text-orange-500"></i>ถอนเงินจากกระเป๋า
                 </h2>
-
+                
                 <div class="space-y-6">
                     <!-- Quick Amount Buttons -->
                     <div>
@@ -103,7 +103,7 @@
                             <i class="fas fa-credit-card mr-1 text-orange-500"></i>เลขที่บัญชี
                         </label>
                         <input type="text" id="withdrawAccount" placeholder="กรอกเลขที่บัญชี 10-15 หลัก"
-                               class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg font-mono"
+                               class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg font-mono" 
                                pattern="[0-9]{10,15}" maxlength="15">
                         <div id="accountError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">กรอกเลขที่บัญชีของคุณ (ไม่ต้องมีขีด)</p>
@@ -161,7 +161,7 @@
 
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-8">
-                    <button id="submitWithdrawBtn" onclick="submitWithdraw()"
+                    <button id="submitWithdrawBtn" onclick="submitWithdraw()" 
                             class="flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold transition-all duration-300 disabled:cursor-not-allowed btn-animate text-lg"
                             disabled>
                         <i class="fas fa-paper-plane mr-2"></i>ยืนยันการถอนเงิน
@@ -173,7 +173,9 @@
             </div>
         </div>
     </div>
-
+    
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
         // Global Variables
         let userData = {};
@@ -189,15 +191,19 @@
         }
 
         function formatAccountNumber(accountNumber) {
+            // Format account number with dashes for better readability
+            // Example: 1234567890 -> 123-4-56789-0
             if (!accountNumber) return '';
-
+            
             const cleaned = accountNumber.replace(/\D/g, '');
-
+            
+            // Different banks have different formats, this is a generic format
             if (cleaned.length === 10) {
                 return cleaned.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4');
             } else if (cleaned.length === 12) {
                 return cleaned.replace(/(\d{3})(\d{2})(\d{5})(\d{2})/, '$1-$2-$3-$4');
             } else {
+                // For other lengths, just add dash every 4 digits
                 return cleaned.replace(/(\d{4})(?=\d)/g, '$1-');
             }
         }
@@ -247,10 +253,10 @@
         // Create quick amount buttons
         function createQuickAmountButtons() {
             const container = document.getElementById('quickAmountButtons');
-            container.innerHTML = '';
-
+            container.innerHTML = ''; // Clear existing buttons
+            
             const amounts = [500, 1000, 2000, 3000, 5000];
-
+            
             amounts.forEach(amount => {
                 if (amount <= walletData.balance) {
                     const button = document.createElement('button');
@@ -266,6 +272,7 @@
                 }
             });
 
+            // Add "ทั้งหมด" button if balance >= 100
             if (walletData.balance >= 100) {
                 const allButton = document.createElement('button');
                 allButton.type = 'button';
@@ -285,8 +292,10 @@
             const input = document.getElementById('withdrawAmount');
             const error = document.getElementById('amountError');
             const amount = parseFloat(input.value) || 0;
+
             error.classList.add('hidden');
             input.classList.remove('valid-input', 'invalid-input', 'warning-input');
+
             if (!amount) {
                 return false;
             } else if (amount < 100) {
@@ -308,8 +317,10 @@
         function validateBank() {
             const select = document.getElementById('withdrawBank');
             const error = document.getElementById('bankError');
+
             error.classList.add('hidden');
             select.classList.remove('valid-input', 'invalid-input');
+
             if (!select.value) {
                 select.classList.add('invalid-input');
                 error.textContent = 'กรุณาเลือกธนาคาร';
@@ -325,8 +336,10 @@
             const input = document.getElementById('withdrawAccount');
             const error = document.getElementById('accountError');
             const account = input.value.trim();
+
             error.classList.add('hidden');
             input.classList.remove('valid-input', 'invalid-input');
+
             if (!account) {
                 input.classList.add('invalid-input');
                 error.textContent = 'กรุณากรอกเลขที่บัญชี';
@@ -352,8 +365,10 @@
             const input = document.getElementById('withdrawAccountName');
             const error = document.getElementById('nameError');
             const name = input.value.trim();
+
             error.classList.add('hidden');
             input.classList.remove('valid-input', 'invalid-input');
+
             if (!name) {
                 input.classList.add('invalid-input');
                 error.textContent = 'กรุณากรอกชื่อเจ้าของบัญชี';
@@ -373,7 +388,9 @@
         function validateTerms() {
             const checkbox = document.getElementById('acceptTerms');
             const error = document.getElementById('termsError');
+
             error.classList.add('hidden');
+
             if (!checkbox.checked) {
                 error.textContent = 'กรุณายอมรับเงื่อนไขการถอนเงิน';
                 error.classList.remove('hidden');
@@ -388,6 +405,7 @@
             const validAccount = validateAccount();
             const validName = validateAccountName();
             const validTerms = validateTerms();
+
             return validAmount && validBank && validAccount && validName && validTerms;
         }
 
@@ -395,6 +413,7 @@
         function updateButtonState() {
             const submitBtn = document.getElementById('submitWithdrawBtn');
             const isValid = validateForm();
+
             if (walletData.balance < 100) {
                 submitBtn.disabled = true;
                 submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
@@ -412,6 +431,7 @@
 
         // Submit withdraw request
         async function submitWithdraw() {
+            // Prevent double submission
             if (isProcessing) {
                 console.log('Already processing...');
                 return;
@@ -482,8 +502,9 @@
 
             if (result.isConfirmed) {
                 isProcessing = true;
-
+                
                 try {
+                    // Show loading
                     Swal.fire({
                         title: 'กำลังดำเนินการ...',
                         html: `
@@ -497,6 +518,7 @@
                         showConfirmButton: false
                     });
 
+                    // Create payload for withdraw request
                     const payload = {
                         action: 'withdraw',
                         userId: userData.userId,
@@ -509,26 +531,30 @@
 
                     console.log('Sending withdraw request:', payload);
 
+                    // Submit to Google Apps Script
                     const response = await fetch(API_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
+                        mode: 'no-cors', // Important for GAS
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+                    // Since no-cors mode, we can't read response directly
+                    // We'll assume success if no error thrown
+                    console.log('Request sent successfully');
 
+                    // Wait a bit to ensure server processed
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
+                    // Check wallet balance to verify transaction
                     const checkResponse = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
                     const checkData = await checkResponse.json();
-
+                    
                     console.log('Wallet check response:', checkData);
 
+                    // If balance reduced, assume success
                     if (checkData.success && checkData.balance < walletData.balance) {
                         await Swal.fire({
                             icon: 'success',
@@ -577,14 +603,16 @@
                             allowOutsideClick: false,
                             width: '90%'
                         });
-
+                        
                         window.location.href = 'index.html';
                     } else {
-                        throw new Error('ไม่สามารถยืนยันการถอนเงินได้: ยอดเงินไม่เปลี่ยนแปลง');
+                        // If balance didn't change, try alternative method
+                        throw new Error('ไม่สามารถยืนยันการถอนเงินได้');
                     }
                 } catch (error) {
                     console.error('Error submitting withdrawal:', error);
-
+                    
+                    // Show detailed error with debug info
                     await Swal.fire({
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาด',
@@ -629,7 +657,7 @@
                 userData: userData,
                 ...additionalData
             };
-
+            
             console.error(`[${context}] Error:`, errorInfo);
             return errorInfo;
         }
@@ -638,21 +666,22 @@
         async function loadWalletData() {
             try {
                 console.log('Loading wallet data for user:', userData.userId);
-
+                
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
-
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-
+                
                 const data = await response.json();
-
+                
                 console.log('Wallet data response:', data);
-
+                
                 if (data.success) {
                     walletData.balance = parseFloat(data.balance) || 0;
                     document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
-
+                    
+                    // Create quick amount buttons after loading balance
                     createQuickAmountButtons();
                     updateButtonState();
                 } else {
@@ -663,7 +692,7 @@
                     apiUrl: API_URL,
                     userId: userData.userId
                 });
-
+                
                 await Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
@@ -692,14 +721,14 @@
             try {
                 console.log('Starting LIFF initialization...');
                 console.log('LIFF ID:', LIFF_ID);
-
+                
                 if (typeof liff === 'undefined') {
                     throw new Error('LIFF SDK not loaded');
                 }
-
+                
                 await liff.init({ liffId: LIFF_ID });
                 console.log('LIFF initialized successfully');
-
+                
                 if (liff.isLoggedIn()) {
                     console.log('User is logged in');
                     initApp();
@@ -712,7 +741,7 @@
                     liffId: LIFF_ID,
                     liffDefined: typeof liff !== 'undefined'
                 });
-
+                
                 await Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
@@ -741,21 +770,24 @@
         async function initApp() {
             try {
                 console.log('Initializing app...');
-
+                
                 const profile = await liff.getProfile();
                 userData = {
                     userId: profile.userId,
                     displayName: profile.displayName,
                     pictureUrl: profile.pictureUrl
                 };
+
                 console.log('User profile loaded:', userData);
 
+                // Check if API_URL is configured
                 if (!API_URL) {
                     throw new Error('API_URL not configured in config.js');
                 }
 
                 await loadWalletData();
 
+                // Check if user has sufficient balance
                 if (walletData.balance < 100) {
                     await Swal.fire({
                         icon: 'warning',
@@ -784,16 +816,18 @@
                     return;
                 }
 
+                // Set up event listeners
                 setupEventListeners();
 
+                // Show app
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
-
+                
             } catch (error) {
                 const errorInfo = logError('initApp', error, {
                     hasApiUrl: !!API_URL
                 });
-
+                
                 await Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
@@ -831,6 +865,7 @@
             const nameInput = document.getElementById('withdrawAccountName');
             const termsCheckbox = document.getElementById('acceptTerms');
 
+            // Amount input validation
             amountInput.addEventListener('input', function() {
                 validateAmount();
                 updateButtonState();
@@ -838,12 +873,15 @@
 
             amountInput.addEventListener('blur', validateAmount);
 
+            // Bank selection validation
             bankSelect.addEventListener('change', function() {
                 validateBank();
                 updateButtonState();
             });
 
+            // Account number validation (only numbers)
             accountInput.addEventListener('input', function() {
+                // Remove any non-numeric characters
                 this.value = this.value.replace(/[^0-9]/g, '');
                 validateAccount();
                 updateButtonState();
@@ -851,6 +889,7 @@
 
             accountInput.addEventListener('blur', validateAccount);
 
+            // Account name validation
             nameInput.addEventListener('input', function() {
                 validateAccountName();
                 updateButtonState();
@@ -858,11 +897,13 @@
 
             nameInput.addEventListener('blur', validateAccountName);
 
+            // Terms checkbox validation
             termsCheckbox.addEventListener('change', function() {
                 validateTerms();
                 updateButtonState();
             });
 
+            // Initial validation
             updateButtonState();
         }
     </script>
