@@ -540,15 +540,22 @@
                         showConfirmButton: false
                     });
 
-                    // Create payload for withdraw request - แก้ไข action name
-                    const payload = {
-                        action: 'withdraw', // เปลี่ยนจาก 'handleWithdraw' เป็น 'withdraw' ตาม GS
-                        userId: userData.userId,
-                        amount: amount,
-                        bank: bank,
-                        account: accountNumber,
-                        accountName: accountName
-                    };
+function handlePostRequest(data = {}, e) {
+  const actions = {
+    addTransaction: () => addGoldTransaction(data),
+    topup: () => handleTopUp(data),
+    withdraw: () => handleWithdrawal(data), // ✅ ตรงกับหน้าเว็บแล้ว
+    uploadSlip: () => handleSlipUpload(e),
+    approve: () => approveTransaction(data),
+    reject: () => rejectTransaction(data),
+    fixData: () => fixTransactionData()
+  };
+  
+  const action = actions[data.action];
+  if (!action) throw new Error('Invalid action');
+  
+  return action();
+}
 
                     console.log('Sending payload:', payload); // Debug log
 
