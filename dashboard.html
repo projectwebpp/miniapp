@@ -1,1 +1,383 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ราคาทอง - ระบบออมทอง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Mobile Header -->
+    <div class="mobile-header p-4 flex items-center space-x-4">
+        <button onclick="goBack()" class="back-btn">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1 class="page-title">ราคาทอง</h1>
+        <div class="w-10"></div> <!-- Spacer for center alignment -->
+    </div>
 
+    <!-- Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <i class="fas fa-chart-line text-6xl text-yellow-500 animate-pulse mb-4"></i>
+            <p class="text-gray-600">กำลังโหลดราคาทอง...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="app" class="hidden page-container p-4">
+        <!-- Current Prices -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow card-hover">
+                <h4 class="font-semibold text-gray-600 mb-2 text-center">
+                    <i class="fas fa-coins mr-1 text-yellow-500"></i>ทองคำแท่ง 96.5%
+                </h4>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">ขายออก:</span>
+                        <span id="barBuyPrice" class="font-bold text-green-600">฿0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">รับซื้อ:</span>
+                        <span id="barSellPrice" class="font-bold text-red-600">฿0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow card-hover">
+                <h4 class="font-semibold text-gray-600 mb-2 text-center">
+                    <i class="fas fa-gem mr-1 text-yellow-500"></i>ทองรูปพรรณ 96.5%
+                </h4>
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">ขายออก:</span>
+                        <span id="ornamentBuyPrice" class="font-bold text-green-600">฿0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-500">รับซื้อ:</span>
+                        <span id="ornamentSellPrice" class="font-bold text-red-600">฿0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="bg-white p-4 rounded-lg shadow mb-4 card-hover">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-lg">
+                    <i class="fas fa-chart-area mr-2 text-yellow-500"></i>กราฟราคาทอง
+                </h3>
+                <div class="flex space-x-2">
+                    <button onclick="changeChartPeriod('1D')" class="chart-period-btn px-3 py-1 rounded text-sm bg-yellow-500 text-white btn-animate">1D</button>
+                    <button onclick="changeChartPeriod('1W')" class="chart-period-btn px-3 py-1 rounded text-sm bg-gray-200 btn-animate">1W</button>
+                    <button onclick="changeChartPeriod('1M')" class="chart-period-btn px-3 py-1 rounded text-sm bg-gray-200 btn-animate">1M</button>
+                    <button onclick="changeChartPeriod('3M')" class="chart-period-btn px-3 py-1 rounded text-sm bg-gray-200 btn-animate">3M</button>
+                </div>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="goldPriceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="bg-white p-4 rounded-lg shadow card-hover">
+            <h3 class="font-bold text-lg mb-4">
+                <i class="fas fa-chart-bar mr-2 text-blue-500"></i>สถิติราคาทอง
+            </h3>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="text-center p-3 bg-green-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">สูงสุดวันนี้</p>
+                    <p id="todayHigh" class="font-bold text-green-600">฿0</p>
+                </div>
+                <div class="text-center p-3 bg-red-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">ต่ำสุดวันนี้</p>
+                    <p id="todayLow" class="font-bold text-red-600">฿0</p>
+                </div>
+                <div class="text-center p-3 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">ค่าเฉลี่ย 7 วัน</p>
+                    <p id="avg7Days" class="font-bold text-blue-600">฿0</p>
+                </div>
+                <div class="text-center p-3 bg-purple-50 rounded-lg">
+                    <p class="text-sm text-gray-500 mb-1">เปลี่ยนแปลง 30 วัน</p>
+                    <p id="change30Days" class="font-bold">0%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Updated -->
+        <div class="mt-4 text-center">
+            <p class="text-sm text-gray-500">
+                <i class="fas fa-clock mr-1"></i>อัพเดทล่าสุด: <span id="lastUpdated">-</span>
+            </p>
+            <button onclick="refreshPrices()" class="mt-2 text-sm text-blue-600 hover:text-blue-800 btn-animate">
+                <i class="fas fa-sync-alt mr-1"></i>รีเฟรชราคา
+            </button>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script>
+        let goldPriceChart = null;
+        let chartPeriod = '1D';
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
+
+        // Initialize Chart
+        function initChart() {
+            const ctx = document.getElementById('goldPriceChart').getContext('2d');
+
+            // Generate sample data
+            const generateChartData = () => {
+                const data = [];
+                const labels = [];
+                const now = new Date();
+                let points = 24;
+
+                switch(chartPeriod) {
+                    case '1W': points = 7 * 24; break;
+                    case '1M': points = 30; break;
+                    case '3M': points = 90; break;
+                }
+
+                const basePrice = currentGoldPrices.bar.buyPrice || 30000;
+
+                for (let i = points; i >= 0; i--) {
+                    const date = new Date(now);
+                    if (chartPeriod === '1D') {
+                        date.setHours(date.getHours() - i);
+                    } else if (chartPeriod === '1W') {
+                        date.setHours(date.getHours() - i);
+                    } else {
+                        date.setDate(date.getDate() - i);
+                    }
+
+                    const randomChange = (Math.random() - 0.5) * 200;
+                    const price = basePrice + randomChange + (Math.sin(i / 10) * 100);
+
+                    data.push({
+                        x: date,
+                        y: price
+                    });
+                    labels.push(date);
+                }
+
+                return { data, labels };
+            };
+
+            const chartData = generateChartData();
+
+            if (goldPriceChart) {
+                goldPriceChart.destroy();
+            }
+
+            goldPriceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'ราคาทองคำแท่ง',
+                        data: chartData.data,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(context) {
+                                    const date = new Date(context[0].parsed.x);
+                                    if (chartPeriod === '1D' || chartPeriod === '1W') {
+                                        return date.toLocaleString('th-TH', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        });
+                                    }
+                                    return date.toLocaleDateString('th-TH', {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    });
+                                },
+                                label: function(context) {
+                                    return 'ราคา: ฿' + formatCurrency(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: chartPeriod === '1D' ? 'hour' : chartPeriod === '1W' ? 'day' : 'day',
+                                displayFormats: {
+                                    hour: 'HH:mm',
+                                    day: 'dd MMM'
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 6
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '฿' + formatCurrency(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Change chart period
+        function changeChartPeriod(period) {
+            chartPeriod = period;
+
+            // Update button styles
+            document.querySelectorAll('.chart-period-btn').forEach(btn => {
+                btn.classList.remove('bg-yellow-500', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+
+            event.target.classList.remove('bg-gray-200', 'text-gray-700');
+            event.target.classList.add('bg-yellow-500', 'text-white');
+
+            initChart();
+        }
+
+        // Update Dashboard
+        function updateDashboard() {
+            // Update current prices
+            document.getElementById('barBuyPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.buyPrice);
+            document.getElementById('barSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.sellPrice);
+            document.getElementById('ornamentBuyPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.buyPrice);
+            document.getElementById('ornamentSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.sellPrice);
+
+            // Calculate mock statistics (in real app, these would come from historical data)
+            const mockStats = {
+                todayHigh: currentGoldPrices.bar.buyPrice * 1.01,
+                todayLow: currentGoldPrices.bar.buyPrice * 0.99,
+                avg7Days: currentGoldPrices.bar.buyPrice * 0.995,
+                change30Days: 2.5
+            };
+
+            document.getElementById('todayHigh').textContent = '฿' + formatCurrency(mockStats.todayHigh);
+            document.getElementById('todayLow').textContent = '฿' + formatCurrency(mockStats.todayLow);
+            document.getElementById('avg7Days').textContent = '฿' + formatCurrency(mockStats.avg7Days);
+            
+            const changeElement = document.getElementById('change30Days');
+            changeElement.textContent = '+' + mockStats.change30Days + '%';
+            changeElement.className = mockStats.change30Days >= 0 ? 'font-bold text-green-600' : 'font-bold text-red-600';
+
+            // Update last updated time
+            document.getElementById('lastUpdated').textContent = new Date().toLocaleString('th-TH');
+        }
+
+        // Refresh prices
+        async function refreshPrices() {
+            const refreshBtn = event.target;
+            const originalText = refreshBtn.innerHTML;
+            
+            // Show loading state
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>กำลังรีเฟรช...';
+            refreshBtn.disabled = true;
+
+            try {
+                const success = await fetchGoldPrices();
+                if (success) {
+                    updateDashboard();
+                    initChart();
+                    
+                    // Show success feedback
+                    refreshBtn.innerHTML = '<i class="fas fa-check mr-1"></i>รีเฟรชเรียบร้อย';
+                    setTimeout(() => {
+                        refreshBtn.innerHTML = originalText;
+                        refreshBtn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error('Failed to fetch prices');
+                }
+            } catch (error) {
+                console.error('Error refreshing prices:', error);
+                refreshBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>เกิดข้อผิดพลาด';
+                setTimeout(() => {
+                    refreshBtn.innerHTML = originalText;
+                    refreshBtn.disabled = false;
+                }, 3000);
+            }
+        }
+
+        // Initialize LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (liff.isLoggedIn()) {
+                    const pricesFetched = await fetchGoldPrices();
+                    console.log('Initial price fetch successful:', pricesFetched);
+                    initApp();
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error('LIFF init failed:', err);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+            }
+        };
+
+        // Initialize App
+        async function initApp() {
+            try {
+                updateDashboard();
+                initChart();
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
