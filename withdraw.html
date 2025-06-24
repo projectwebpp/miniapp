@@ -235,17 +235,18 @@
         </div>
     </div>
     
+      <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
-        // Configuration - Replace with your actual values
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwS4EwiW66bx8AKD7bt40vcFbZK7xpCod46EeomxBGGfFF_2YARo0xASMSmbPBVnKY0/exec';
-        const LIFF_ID = '2006576067-VpAMJY9v'; // Replace with your actual LIFF ID
-
         // Global Variables
         let userData = {};
-        let walletData = { balance: 0 };
-        let isProcessing = false;
-        let retryCount = 0;
-        const MAX_RETRIES = 3;
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
+        let walletData = { balance: 0, transactions: [] };
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
 
         // Add processing state management
         function setProcessing(state) {
