@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ขายทอง - ระบบออมทอง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Mobile Header -->
+    <div class="mobile-header p-4 flex items-center space-x-4">
+        <button onclick="goBack()" class="back-btn">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1 class="page-title">ขายทอง</h1>
+        <div class="w-10"></div> <!-- Spacer for center alignment -->
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
+            <p class="text-gray-600">กำลังโหลด...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="app" class="hidden page-container p-4">
+        <div class="max-w-md mx-auto">
+            <!-- Current Prices Display -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6 card-hover">
+                <h3 class="font-bold text-lg mb-4 text-center">
+                    <i class="fas fa-chart-line mr-2 text-red-500"></i>ราคารับซื้อวันนี้
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-3 bg-red-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองคำแท่ง</p>
+                        <p id="barSellPrice" class="font-bold text-red-600">฿0</p>
+                    </div>
+                    <div class="text-center p-3 bg-red-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองรูปพรรณ</p>
+                        <p id="ornamentSellPrice" class="font-bold text-red-600">฿0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gold Holdings Display -->
+            <div class="bg-white rounded-lg shadow p-4 mb-6 card-hover">
+                <h3 class="font-bold text-lg mb-4 text-center">
+                    <i class="fas fa-coins mr-2 text-yellow-500"></i>ทองคำของคุณ
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองคำแท่ง</p>
+                        <p id="barGoldHolding" class="font-bold text-yellow-600">0 กรัม</p>
+                    </div>
+                    <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองรูปพรรณ</p>
+                        <p id="ornamentGoldHolding" class="font-bold text-yellow-600">0 กรัม</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sell Form -->
+            <div class="bg-white rounded-lg shadow p-6 card-hover">
+                <h2 class="text-xl font-bold mb-6 text-center">
+                    <i class="fas fa-hand-holding-usd mr-2 text-red-500"></i>ขายทอง
+                </h2>
+                
+                <div class="space-y-4">
+                    <!-- Gold Type Selection -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">
+                            <i class="fas fa-coins mr-1"></i>ประเภททอง
+                        </label>
+                        <select id="sellGoldType" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" onchange="updateSellPrice(); updateSellAvailable();">
+                            <option value="ornament">ทองรูปพรรณ 96.5%</option>
+                            <option value="bar">ทองคำแท่ง 96.5%</option>
+                        </select>
+                    </div>
+
+                    <!-- Available Amount Info -->
+                    <div id="sellAvailableInfo" class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p class="text-sm text-gray-600">
+                            <i class="fas fa-info-circle mr-1"></i>ทองคงเหลือ: 
+                            <span id="sellAvailable" class="font-bold text-blue-600">0 กรัม</span>
+                        </p>
+                    </div>
+
+                    <!-- Unit Selection -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">
+                            <i class="fas fa-weight mr-1"></i>เลือกหน่วย
+                        </label>
+                        <select id="sellUnit" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" onchange="updateSellAmount()">
+                            <option value="">-- เลือกหน่วย --</option>
+                            <option value="3.75">1 สลึง (3.75 กรัม)</option>
+                            <option value="7.5">2 สลึง (7.5 กรัม)</option>
+                            <option value="11.25">3 สลึง (11.25 กรัม)</option>
+                            <option value="15.2">1 บาท (15.2 กรัม)</option>
+                            <option value="30.4">2 บาท (30.4 กรัม)</option>
+                            <option value="45.6">3 บาท (45.6 กรัม)</option>
+                            <option value="60.8">4 บาท (60.8 กรัม)</option>
+                            <option value="76">5 บาท (76 กรัม)</option>
+                            <option value="custom">กำหนดเอง</option>
+                        </select>
+                    </div>
+
+                    <!-- Amount -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">
+                            <i class="fas fa-balance-scale mr-1"></i>จำนวน (กรัม)
+                        </label>
+                        <input type="number" id="sellAmount" step="0.01" min="0.01" placeholder="กรอกจำนวนกรัม"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                    </div>
+
+                    <!-- Price -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">
+                            <i class="fas fa-tag mr-1"></i>ราคาต่อบาท
+                        </label>
+                        <input type="number" id="sellPrice" step="0.01" min="1" placeholder="กรุณากรอกราคา"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
+                    </div>
+
+                    <!-- Total -->
+                    <div class="bg-red-50 p-4 rounded-lg border-2 border-red-200">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-red-800">
+                                <i class="fas fa-calculator mr-1"></i>ยอดรวม:
+                            </span>
+                            <span id="sellTotal" class="text-2xl font-bold text-red-600">฿0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex space-x-3 mt-6">
+                    <button id="sellButton" onclick="sellGold()" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition btn-animate">
+                        <i class="fas fa-hand-holding-usd mr-2"></i>ยืนยันการขาย
+                    </button>
+                    <button onclick="goBack()" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition btn-animate">
+                        <i class="fas fa-times mr-2"></i>ยกเลิก
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script>
+        // Global Variables
+        let userData = {};
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
+
+        // Validation functions
+        function validateSellInput() {
+            const amount = parseFloat(document.getElementById('sellAmount').value);
+            const price = parseFloat(document.getElementById('sellPrice').value);
+            const goldType = document.getElementById('sellGoldType').value;
+
+            if (!amount || amount <= 0) {
+                return { valid: false, message: 'กรุณากรอกจำนวนทองที่ต้องการขาย' };
+            }
+
+            if (amount < 0.01) {
+                return { valid: false, message: 'จำนวนทองต้องมากกว่า 0.01 กรัม' };
+            }
+
+            if (!price || price <= 0) {
+                return { valid: false, message: 'กรุณากรอกราคาทองที่ถูกต้อง' };
+            }
+
+            if (price < 1) {
+                return { valid: false, message: 'ราคาทองต้องมากกว่า 1 บาท' };
+            }
+
+            // Check if user has enough gold of specified type
+            const typeBalance = currentGoldData.balances[goldType]?.totalGold || 0;
+            if (typeBalance <= 0) {
+                const goldTypeText = goldType === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+                return { valid: false, message: `คุณไม่มี${goldTypeText}ในระบบ` };
+            }
+
+            if (amount > typeBalance) {
+                const goldTypeText = goldType === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+                return { valid: false, message: `คุณมี${goldTypeText}ไม่เพียงพอ (คงเหลือ ${formatNumber(typeBalance)} กรัม)` };
+            }
+
+            return { valid: true };
+        }
+
+        // Update price based on gold type
+        function updateSellPrice() {
+            const goldType = document.getElementById('sellGoldType').value;
+            const sellPriceInput = document.getElementById('sellPrice');
+            const price = currentGoldPrices[goldType]?.sellPrice || 0;
+            console.log(`Updating sell price for ${goldType}: ${price}`);
+            sellPriceInput.value = price > 0 ? formatNumber(price) : '';
+            sellPriceInput.placeholder = price > 0 ? 'กรุณากรอกราคา' : 'กรุณากรอกราคา (API ไม่มีข้อมูล)';
+            calculateSellTotal();
+        }
+
+        // Update available gold info in sell modal
+        function updateSellAvailable() {
+            const goldType = document.getElementById('sellGoldType').value;
+            const availableAmount = currentGoldData.balances[goldType]?.totalGold || 0;
+            document.getElementById('sellAvailable').textContent = formatNumber(availableAmount) + ' กรัม';
+
+            // Update info box color based on availability
+            const infoBox = document.getElementById('sellAvailableInfo');
+            if (availableAmount <= 0) {
+                infoBox.className = 'bg-red-50 p-3 rounded-lg border border-red-200';
+                document.getElementById('sellAvailable').className = 'font-bold text-red-600';
+            } else {
+                infoBox.className = 'bg-blue-50 p-3 rounded-lg border border-blue-200';
+                document.getElementById('sellAvailable').className = 'font-bold text-blue-600';
+            }
+
+            // Update button state
+            updateButtonState();
+        }
+
+        // Update amount based on unit selection
+        function updateSellAmount() {
+            const unit = document.getElementById('sellUnit').value;
+            const amountInput = document.getElementById('sellAmount');
+            const goldType = document.getElementById('sellGoldType').value;
+            const availableAmount = currentGoldData.balances[goldType]?.totalGold || 0;
+            
+            if (unit && unit !== 'custom') {
+                const requestedAmount = parseFloat(unit);
+                if (requestedAmount > availableAmount) {
+                    Swal.fire('ข้อผิดพลาด', `คุณมี${getGoldTypeText(goldType)}ไม่เพียงพอสำหรับ ${getGoldUnitText(requestedAmount)}`, 'error');
+                    document.getElementById('sellUnit').value = '';
+                    return;
+                }
+                amountInput.value = unit;
+                amountInput.readOnly = true;
+            } else {
+                amountInput.readOnly = false;
+                if (unit !== 'custom') {
+                    amountInput.value = '';
+                }
+            }
+            calculateSellTotal();
+        }
+
+        // Calculate total in real-time
+        function calculateSellTotal() {
+            const amount = parseFloat(document.getElementById('sellAmount').value) || 0;
+            const pricePerBaht = parseFloat(document.getElementById('sellPrice').value) || 0;
+            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const total = bahtEquivalent * pricePerBaht;
+            document.getElementById('sellTotal').textContent = '฿' + formatCurrency(total);
+            updateButtonState();
+        }
+
+        // Update button state
+        function updateButtonState() {
+            const sellButton = document.getElementById('sellButton');
+            const goldType = document.getElementById('sellGoldType').value;
+            const availableAmount = currentGoldData.balances[goldType]?.totalGold || 0;
+            
+            if (availableAmount <= 0) {
+                sellButton.disabled = true;
+                sellButton.className = 'flex-1 bg-gray-400 text-white py-3 rounded-lg font-semibold cursor-not-allowed';
+                sellButton.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ไม่มีทองให้ขาย';
+            } else {
+                sellButton.disabled = false;
+                sellButton.className = 'flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition btn-animate';
+                sellButton.innerHTML = '<i class="fas fa-hand-holding-usd mr-2"></i>ยืนยันการขาย';
+            }
+        }
+
+        // Update price display
+        function updatePriceDisplay() {
+            document.getElementById('barSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.sellPrice);
+            document.getElementById('ornamentSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.sellPrice);
+        }
+
+        // Update holdings display
+        function updateHoldingsDisplay() {
+            document.getElementById('barGoldHolding').textContent = formatNumber(currentGoldData.balances.bar?.totalGold || 0) + ' กรัม';
+            document.getElementById('ornamentGoldHolding').textContent = formatNumber(currentGoldData.balances.ornament?.totalGold || 0) + ' กรัม';
+        }
+
+        // Update wallet balance
+        async function updateWallet(amount, description, status) {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'updateWallet');
+                formData.append('userId', userData.userId);
+                formData.append('amount', amount);
+                formData.append('description', description);
+                formData.append('status', status);
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('Error updating wallet:', data.message);
+                }
+            } catch (error) {
+                console.error('Error updating wallet:', error);
+            }
+        }
+
+        // Sell Gold function
+        async function sellGold() {
+            const validation = validateSellInput();
+            if (!validation.valid) {
+                Swal.fire('ข้อผิดพลาด', validation.message, 'error');
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('sellAmount').value);
+            const pricePerBaht = parseFloat(document.getElementById('sellPrice').value);
+            const goldType = document.getElementById('sellGoldType').value;
+            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const total = bahtEquivalent * pricePerBaht;
+
+            const result = await Swal.fire({
+                title: 'ยืนยันการขาย',
+                html: `
+                    <div class="text-left space-y-2">
+                        <p><strong>ประเภท:</strong> ${getGoldTypeText(goldType)}</p>
+                        <p><strong>จำนวน:</strong> ${getGoldUnitText(amount)}</p>
+                        <p><strong>ราคา:</strong> ฿${formatCurrency(pricePerBaht)}/บาท</p>
+                        <p class="text-lg"><strong>รวม:</strong> <span class="text-red-600">฿${formatCurrency(total)}</span></p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันการขาย',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ef4444'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    // Show loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        html: 'กำลังบันทึกรายการขายทอง',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    const formData = new FormData();
+                    formData.append('action', 'addTransaction');
+                    formData.append('userId', userData.userId);
+                    formData.append('userName', userData.name);
+                    formData.append('type', 'ขาย');
+                    formData.append('amount', amount);
+                    formData.append('price', pricePerBaht);
+                    formData.append('total', total);
+                    formData.append('goldType', goldType);
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const newBalance = currentGoldData.totalGold - amount;
+
+                        // Add to wallet
+                        await updateWallet(total, 'ขายทอง', 'สำเร็จ');
+
+                        // Send LINE message
+                        await sendFlexMessage('ขาย', amount, pricePerBaht, total, newBalance, goldType);
+                        
+                        // Show success alert with detailed information
+                        await Swal.fire({
+                            icon: 'success',
+                            title: '🎉 ขายทองสำเร็จ!',
+                            html: `
+                                <div class="text-center space-y-3">
+                                    <div class="bg-green-50 p-4 rounded-lg">
+                                        <p class="text-lg font-semibold text-green-800">รายละเอียดการขาย</p>
+                                        <hr class="my-2">
+                                        <div class="text-left space-y-1">
+                                            <p><strong>ประเภท:</strong> ${getGoldTypeText(goldType)}</p>
+                                            <p><strong>จำนวน:</strong> ${getGoldUnitText(amount)}</p>
+                                            <p><strong>ราคา:</strong> ฿${formatCurrency(pricePerBaht)}/บาท</p>
+                                            <p class="text-lg"><strong>เงินที่ได้รับ:</strong> <span class="text-green-600 font-bold">฿${formatCurrency(total)}</span></p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-blue-50 p-4 rounded-lg">
+                                        <p class="text-sm text-blue-800">💰 เงินได้เข้ากระเป๋าเรียบร้อยแล้ว</p>
+                                        <p class="text-sm text-blue-800">🏆 ทองคงเหลือ: ${formatNumber(newBalance)} กรัม</p>
+                                    </div>
+                                </div>
+                            `,
+                            confirmButtonText: 'กลับหน้าหลัก',
+                            confirmButtonColor: '#10b981',
+                            allowOutsideClick: false
+                        });
+
+                        // Go back to main page
+                        window.location.href = 'index.html';
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', data.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error selling gold:', error);
+                    Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                }
+            }
+        }
+
+        // Load Gold Data
+        async function loadGoldData() {
+            try {
+                const response = await fetch(`${API_URL}?action=getBalance&userId=${userData.userId}`);
+                const data = await response.json();
+                if (data.success) {
+                    currentGoldData.totalGold = data.totalGold || 0;
+                    currentGoldData.avgPrice = data.avgPrice || 0;
+                    currentGoldData.balances = data.balances || { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } };
+                    updateHoldingsDisplay();
+                    updateSellAvailable();
+                }
+            } catch (error) {
+                console.error('Error loading gold data:', error);
+            }
+        }
+
+        // Initialize LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (liff.isLoggedIn()) {
+                    const pricesFetched = await fetchGoldPrices();
+                    console.log('Initial price fetch successful:', pricesFetched);
+                    initApp();
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error('LIFF init failed:', err);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+            }
+        };
+
+        // Initialize App
+        async function initApp() {
+            try {
+                const profile = await liff.getProfile();
+                userData = {
+                    userId: profile.userId,
+                    name: profile.displayName,
+                    picture: profile.pictureUrl
+                };
+                window.userData = userData; // Make available globally
+                
+                await loadGoldData();
+                updateSellPrice();
+                updatePriceDisplay();
+                
+                // Check if user has any gold
+                if (currentGoldData.totalGold <= 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ไม่มีทองคำในระบบ',
+                        text: 'คุณยังไม่มีทองคำในระบบ กรุณาซื้อทองก่อน',
+                        confirmButtonText: 'ไปซื้อทอง',
+                        showCancelButton: true,
+                        cancelButtonText: 'กลับหน้าหลัก'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'buy.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    });
+                    return;
+                }
+                
+                // Set up event listeners
+                document.getElementById('sellAmount').addEventListener('input', calculateSellTotal);
+                document.getElementById('sellPrice').addEventListener('input', calculateSellTotal);
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
