@@ -243,6 +243,36 @@
         let walletData = { balance: 0 };
         let isProcessing = false; // Prevent double submission
 
+        // Utility Functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function formatAccountNumber(accountNumber) {
+            // Format account number with dashes for better readability
+            // Example: 1234567890 -> 123-4-56789-0
+            if (!accountNumber) return '';
+            
+            const cleaned = accountNumber.replace(/\D/g, '');
+            
+            // Different banks have different formats, this is a generic format
+            if (cleaned.length === 10) {
+                return cleaned.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4');
+            } else if (cleaned.length === 12) {
+                return cleaned.replace(/(\d{3})(\d{2})(\d{5})(\d{2})/, '$1-$2-$3-$4');
+            } else {
+                // For other lengths, just add dash every 4 digits
+                return cleaned.replace(/(\d{4})(?=\d)/g, '$1-');
+            }
+        }
+
+        function goBack() {
+            window.location.href = 'index.html';
+        }
+
         // Show terms modal
         function showTerms() {
             Swal.fire({
