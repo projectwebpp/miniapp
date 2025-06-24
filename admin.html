@@ -9,7 +9,61 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+        .mobile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        .page-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        .btn-animate {
+            transition: all 0.3s ease;
+        }
+        .btn-animate:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .page-container {
+            min-height: calc(100vh - 80px);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -111,9 +165,26 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Config - แก้ไข URL และ LIFF ID ตามจริง
+        const API_URL = 'YOUR_API_ENDPOINT_HERE'; // แก้ไข URL ของ API
+        const LIFF_ID = 'YOUR_LIFF_ID_HERE'; // แก้ไข LIFF ID
+
+        // Utility Functions
+        function formatCurrency(amount) {
+            return parseFloat(amount).toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function formatNumber(num) {
+            return parseFloat(num).toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
         // Global Variables
         let userData = {};
         let pendingTransactions = [];
@@ -209,7 +280,7 @@
 
             if (pendingTransactions.length === 0) {
                 container.innerHTML = `
-                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                    <div class="bg-white p-6 rounded-lg shadow text-center fade-in">
                         <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
                         <p class="text-gray-500">ไม่มีรายการรอการอนุมัติ</p>
                     </div>
@@ -219,7 +290,7 @@
 
             pendingTransactions.forEach(transaction => {
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-lg shadow p-4 card-hover';
+                card.className = 'bg-white rounded-lg shadow p-4 card-hover fade-in';
                 
                 const typeColor = transaction.type === 'เติมเงิน' ? 'text-green-600' : 'text-orange-600';
                 const typeIcon = transaction.type === 'เติมเงิน' ? 'fa-plus-circle' : 'fa-minus-circle';
@@ -320,7 +391,7 @@
             document.getElementById('transactionModal').classList.add('hidden');
         }
 
-        // Approve transaction
+        // Approve transaction - แก้ไขให้ใช้ FormData
         async function approveTransaction(userId, date, amount, type) {
             const result = await Swal.fire({
                 title: 'ยืนยันการอนุมัติ',
@@ -334,28 +405,36 @@
 
             if (result.isConfirmed) {
                 try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            action: 'updateTransactionStatus',
-                            userId: userId,
-                            transactionDate: date,
-                            newStatus: 'สำเร็จ'
-                        })
+                    // สร้าง FormData ตามแบบที่แนะนำ
+                    const data = new FormData();
+                    data.append('action', 'updateTransactionStatus');
+                    data.append('userId', userId);
+                    data.append('transactionDate', date);
+                    data.append('newStatus', 'สำเร็จ');
+
+                    // ใช้รูปแบบ fetch ตามตัวอย่าง
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: data
+                    })
+                    .then(res => res.text())
+                    .then(responseData => {
+                        console.log('Approve response:', responseData);
+                        
+                        // ตรวจสอบ response
+                        if (responseData.includes('success') || responseData.includes('สำเร็จ') || responseData.includes('อนุมัติ')) {
+                            Swal.fire('สำเร็จ', 'อนุมัติรายการเรียบร้อยแล้ว', 'success');
+                            closeTransactionModal();
+                            loadPendingTransactions();
+                        } else {
+                            throw new Error('ไม่สามารถอนุมัติได้: ' + responseData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error approving transaction:', error);
+                        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถอนุมัติได้', 'error');
                     });
 
-                    const data = await response.json();
-
-                    if (data.success) {
-                        Swal.fire('สำเร็จ', 'อนุมัติรายการเรียบร้อยแล้ว', 'success');
-                        closeTransactionModal();
-                        await loadPendingTransactions();
-                    } else {
-                        throw new Error(data.message || 'ไม่สามารถอนุมัติได้');
-                    }
                 } catch (error) {
                     console.error('Error approving transaction:', error);
                     Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถอนุมัติได้', 'error');
@@ -363,7 +442,7 @@
             }
         }
 
-        // Reject transaction
+        // Reject transaction - แก้ไขให้ใช้ FormData
         async function rejectTransaction(userId, date) {
             const { value: reason } = await Swal.fire({
                 title: 'เหตุผลในการปฏิเสธ',
@@ -377,28 +456,36 @@
 
             if (reason !== undefined) {
                 try {
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            action: 'rejectTransaction',
-                            userId: userId,
-                            transactionDate: date,
-                            reason: reason || 'ไม่ระบุเหตุผล'
-                        })
+                    // สร้าง FormData ตามแบบที่แนะนำ
+                    const data = new FormData();
+                    data.append('action', 'rejectTransaction');
+                    data.append('userId', userId);
+                    data.append('transactionDate', date);
+                    data.append('reason', reason || 'ไม่ระบุเหตุผล');
+
+                    // ใช้รูปแบบ fetch ตามตัวอย่าง
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: data
+                    })
+                    .then(res => res.text())
+                    .then(responseData => {
+                        console.log('Reject response:', responseData);
+                        
+                        // ตรวจสอบ response
+                        if (responseData.includes('success') || responseData.includes('สำเร็จ') || responseData.includes('ปฏิเสธ')) {
+                            Swal.fire('สำเร็จ', 'ปฏิเสธรายการเรียบร้อยแล้ว', 'success');
+                            closeTransactionModal();
+                            loadPendingTransactions();
+                        } else {
+                            throw new Error('ไม่สามารถปฏิเสธได้: ' + responseData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error rejecting transaction:', error);
+                        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถปฏิเสธได้', 'error');
                     });
 
-                    const data = await response.json();
-
-                    if (data.success) {
-                        Swal.fire('สำเร็จ', 'ปฏิเสธรายการเรียบร้อยแล้ว', 'success');
-                        closeTransactionModal();
-                        await loadPendingTransactions();
-                    } else {
-                        throw new Error(data.message || 'ไม่สามารถปฏิเสธได้');
-                    }
                 } catch (error) {
                     console.error('Error rejecting transaction:', error);
                     Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถปฏิเสธได้', 'error');
@@ -428,7 +515,7 @@
 
             if (allUsers.length === 0) {
                 container.innerHTML = `
-                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                    <div class="bg-white p-6 rounded-lg shadow text-center fade-in">
                         <i class="fas fa-users text-6xl text-gray-400 mb-4"></i>
                         <p class="text-gray-500">ไม่มีข้อมูลผู้ใช้</p>
                     </div>
@@ -438,7 +525,7 @@
 
             allUsers.forEach(user => {
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-lg shadow p-4 card-hover';
+                card.className = 'bg-white rounded-lg shadow p-4 card-hover fade-in';
                 
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
@@ -501,7 +588,7 @@
             ];
 
             container.innerHTML = stats.map(stat => `
-                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                <div class="text-center p-4 bg-gray-50 rounded-lg fade-in">
                     <i class="fas ${stat.icon} text-2xl text-${stat.color}-500 mb-2"></i>
                     <p class="text-xs text-gray-500 mb-1">${stat.label}</p>
                     <p class="font-bold text-${stat.color}-600">${stat.value}</p>
