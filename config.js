@@ -1,6 +1,6 @@
 // config.js - ไฟล์การตั้งค่า
 const LIFF_ID = '2007617194-X8qdV2Yb';
-const API_URL = 'https://script.google.com/macros/s/AKfycbwS4EwiW66bx8AKD7bt40vcFbZK7xpCod46EeomxBGGfFF_2YARo0xASMSmbPBVnKY0/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbx0XPybBuT5BEJc8FSAkaLIdRbY-hdwFLMWt2EAg8v3PViz0Kik1kHNPo0-nIrr6UUt/exec';
 const GOLD_PRICE_API = 'https://script.google.com/macros/s/AKfycbwgvstkxFOR9p6zOV2d8iEGagbpQ6h8C3BhPnDCoB56jvmbAwSG0A9a36r6oRxNkBXQ/exec';
 const GRAMS_PER_BAHT = 15.244;
 const SLIP_FOLDER_ID = '1jOsUGHmNIJ6KxMaLm1O8ENoEnUc9Kzd_';
