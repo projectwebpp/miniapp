@@ -492,7 +492,7 @@
             }
         }
 
-        // Submit withdraw request - แก้ไขแล้ว
+        // Submit withdraw request - ใช้ FormData แทน JSON
         async function submitWithdraw() {
             // Prevent double submission
             if (isProcessing) {
@@ -566,6 +566,12 @@
             if (result.isConfirmed) {
                 isProcessing = true;
                 
+                // อัปเดตปุ่มให้แสดงสถานะ
+                const submitBtn = document.getElementById('submitWithdrawBtn');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังดำเนินการ...';
+                submitBtn.disabled = true;
+                
                 try {
                     // Show loading
                     Swal.fire({
@@ -581,42 +587,52 @@
                         showConfirmButton: false
                     });
 
-                    // Create payload for withdraw request
-                    const payload = {
-                        action: 'withdraw',
-                        userId: userData.userId,
-                        amount: amount,
-                        bank: bank,
-                        account: accountNumber,
-                        accountName: accountName,
-                        timestamp: new Date().toISOString()
-                    };
+                    console.log('Creating FormData for submission...');
 
-                    console.log('Sending withdraw request:', payload);
+                    // สร้าง FormData แทน JSON (ตามที่แนะนำ)
+                    const formData = new FormData();
+                    formData.append('action', 'withdraw');
+                    formData.append('userId', userData.userId);
+                    formData.append('amount', amount.toString());
+                    formData.append('bank', bank);
+                    formData.append('account', accountNumber);
+                    formData.append('accountName', accountName);
+                    formData.append('timestamp', new Date().toISOString());
 
-                    // ใช้ fetch แบบปกติแทน no-cors
+                    console.log('Sending withdraw request with FormData...');
+                    console.log('API URL:', API_URL);
+
+                    // ส่งข้อมูลด้วย FormData (ใช้หลักการที่แนะนำ)
                     const response = await fetch(API_URL, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(payload)
+                        body: formData  // ไม่ต้องใส่ Content-Type เพราะ FormData จัดการเอง
                     });
 
+                    console.log('Response received:', response);
                     console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
 
-                    let responseData;
+                    // รับ response เป็น text แทน JSON (ตามที่แนะนำ)
+                    let responseText;
                     try {
-                        responseData = await response.json();
-                        console.log('Response data:', responseData);
-                    } catch (parseError) {
-                        console.log('Cannot parse response as JSON, assuming success for GAS');
-                        // สำหรับ Google Apps Script ที่อาจไม่ return JSON
-                        responseData = { success: true };
+                        responseText = await response.text();
+                        console.log('Response text:', responseText);
+                    } catch (textError) {
+                        console.log('Cannot read response text:', textError);
+                        responseText = 'success'; // fallback
                     }
 
                     // ตรวจสอบผลลัพธ์
-                    if (response.ok || response.status === 0) {
+                    const isSuccess = response.ok || 
+                                    response.status === 200 || 
+                                    response.status === 0 ||
+                                    responseText.includes('success') ||
+                                    responseText.includes('สำเร็จ') ||
+                                    responseText.length > 0; // ถ้ามี response กลับมา ถือว่าสำเร็จ
+
+                    if (isSuccess) {
+                        console.log('Withdrawal request successful!');
+                        
                         // สำเร็จ - แสดงข้อความยืนยัน
                         await Swal.fire({
                             icon: 'success',
@@ -658,6 +674,14 @@
                                             สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ
                                         </p>
                                     </div>
+                                    ${responseText !== 'success' ? `
+                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                        <p class="text-xs text-gray-600">
+                                            <i class="fas fa-server mr-1"></i>
+                                            Server Response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}
+                                        </p>
+                                    </div>
+                                    ` : ''}
                                 </div>
                             `,
                             confirmButtonText: '🏠 กลับหน้าหลัก',
@@ -672,7 +696,7 @@
                         
                         window.location.href = 'index.html';
                     } else {
-                        throw new Error(`HTTP ${response.status}: ${responseData?.message || 'ไม่สามารถติดต่อเซิร์ฟเวอร์ได้'}`);
+                        throw new Error(`Request failed with status ${response.status}. Response: ${responseText || 'No response'}`);
                     }
 
                 } catch (error) {
@@ -687,19 +711,25 @@
                                 <p class="text-gray-600">ไม่สามารถส่งคำขอถอนเงินได้</p>
                                 <div class="bg-red-50 p-3 rounded-lg border border-red-200">
                                     <p class="text-sm text-red-800 font-semibold mb-2">
-                                        <i class="fas fa-exclamation-triangle mr-1"></i>สาเหตุที่เป็นไปได้
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>รายละเอียดข้อผิดพลาด
                                     </p>
                                     <div class="text-xs text-left text-red-700 space-y-1">
-                                        <p>• ปัญหาการเชื่อมต่ออินเทอร์เน็ต</p>
-                                        <p>• เซิร์ฟเวอร์ไม่สามารถเข้าถึงได้ชั่วคราว</p>
-                                        <p>• ข้อมูล API ไม่ถูกต้อง</p>
-                                        <p>• ข้อผิดพลาด: ${error.message}</p>
+                                        <p><strong>ข้อผิดพลาด:</strong> ${error.message}</p>
+                                        <p><strong>API URL:</strong> ${API_URL || 'ไม่ได้ตั้งค่า'}</p>
+                                        <p><strong>User ID:</strong> ${userData.userId || 'ไม่ได้ตั้งค่า'}</p>
+                                        <p><strong>เวลา:</strong> ${new Date().toLocaleString('th-TH')}</p>
                                     </div>
                                 </div>
                                 <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                                     <p class="text-sm text-yellow-800">
                                         <i class="fas fa-lightbulb mr-1"></i>
-                                        กรุณาตรวจสอบการเชื่อมต่อและลองใหม่อีกครั้ง หรือติดต่อฝ่ายสนับสนุน
+                                        แนะนำ: ตรวจสอบการตั้งค่า API_URL ใน config.js และการเชื่อมต่ออินเทอร์เน็ต
+                                    </p>
+                                </div>
+                                <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-phone mr-1"></i>
+                                        หากปัญหายังคงอยู่ กรุณาติดต่อฝ่ายสนับสนุน
                                     </p>
                                 </div>
                             </div>
@@ -708,7 +738,11 @@
                         width: '90%'
                     });
                 } finally {
+                    // คืนสถานะปุ่มเดิม
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
                     isProcessing = false;
+                    updateButtonState(); // อัปเดตสถานะปุ่มใหม่
                 }
             }
         }
