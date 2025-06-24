@@ -165,28 +165,12 @@
         </div>
     </div>
 
+   <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
-        // Config - แก้ไข URL และ LIFF ID ตามจริง
-        const API_URL = 'YOUR_API_ENDPOINT_HERE'; // แก้ไข URL ของ API
-        const LIFF_ID = 'YOUR_LIFF_ID_HERE'; // แก้ไข LIFF ID
-
-        // Utility Functions
-        function formatCurrency(amount) {
-            return parseFloat(amount).toLocaleString('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
-        function formatNumber(num) {
-            return parseFloat(num).toLocaleString('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
         // Global Variables
         let userData = {};
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let pendingTransactions = [];
         let allUsers = [];
         let systemStats = {};
@@ -196,6 +180,15 @@
         function goBack() {
             window.history.back();
         }
+
+
+        function formatNumber(num) {
+            return parseFloat(num).toLocaleString('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
 
         // Tab switching
         function switchTab(tab) {
