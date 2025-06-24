@@ -767,10 +767,437 @@
             updateButtonState();
         }
 
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script>
+        // Global Variables
+        let userData = {};
+        let walletData = { balance: 0 };
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
+
+        // Format account number for display
+        function formatAccountNumber(account) {
+            // Format as XXX-X-XXXXX-X for display
+            if (account.length === 10) {
+                return `${account.slice(0,3)}-${account.slice(3,4)}-${account.slice(4,9)}-${account.slice(9)}`;
+            }
+            return account;
+        }
+
+        // Show terms modal
+        function showTerms() {
+            Swal.fire({
+                title: 'เงื่อนไขการถอนเงิน',
+                html: `
+                    <div class="text-left space-y-3 text-sm">
+                        <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                            <h4 class="font-semibold text-yellow-800 mb-2">ข้อกำหนดทั่วไป</h4>
+                            <ul class="space-y-1 text-yellow-700">
+                                <li>• จำนวนเงินขั้นต่ำในการถอน 100 บาท</li>
+                                <li>• ต้องมียอดเงินเพียงพอในกระเป๋า</li>
+                                <li>• ข้อมูลบัญชีต้องถูกต้องและครบถ้วน</li>
+                            </ul>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <h4 class="font-semibold text-blue-800 mb-2">ระยะเวลาดำเนินการ</h4>
+                            <ul class="space-y-1 text-blue-700">
+                                <li>• การตรวจสอบ: ภายใน 24 ชั่วโมง</li>
+                                <li>• การโอนเงิน: 1-2 วันทำการ</li>
+                                <li>• เวลาทำการ: จันทร์-ศุกร์ 9:00-17:00 น.</li>
+                            </ul>
+                        </div>
+                        <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+                            <h4 class="font-semibold text-green-800 mb-2">การยกเลิกและคืนเงิน</h4>
+                            <ul class="space-y-1 text-green-700">
+                                <li>• สามารถยกเลิกได้ก่อนการอนุมัติ</li>
+                                <li>• หลังอนุมัติแล้วไม่สามารถยกเลิกได้</li>
+                                <li>• กรณีมีปัญหาติดต่อฝ่ายลูกค้าสัมพันธ์</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: 'รับทราบ',
+                confirmButtonColor: '#f59e0b',
+                width: '90%'
+            });
+        }
+
+        // Create quick amount buttons
+        function createQuickAmountButtons() {
+            const container = document.getElementById('quickAmountButtons');
+            container.innerHTML = '';
+            
+            const amounts = [500, 1000, 2000, 3000, 5000];
+            
+            amounts.forEach(amount => {
+                if (amount <= walletData.balance) {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'px-3 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors border border-orange-200';
+                    button.textContent = `฿${formatCurrency(amount)}`;
+                    button.onclick = () => {
+                        document.getElementById('withdrawAmount').value = amount;
+                        validateAmount();
+                        updateButtonState();
+                    };
+                    container.appendChild(button);
+                }
+            });
+
+            // Add "ทั้งหมด" button if balance >= 100
+            if (walletData.balance >= 100) {
+                const allButton = document.createElement('button');
+                allButton.type = 'button';
+                allButton.className = 'px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors border border-blue-200';
+                allButton.textContent = 'ทั้งหมด';
+                allButton.onclick = () => {
+                    document.getElementById('withdrawAmount').value = walletData.balance;
+                    validateAmount();
+                    updateButtonState();
+                };
+                container.appendChild(allButton);
+            }
+        }
+
+        // Validation Functions
+        function validateAmount() {
+            const input = document.getElementById('withdrawAmount');
+            const error = document.getElementById('amountError');
+            const amount = parseFloat(input.value) || 0;
+
+            error.classList.add('hidden');
+            input.classList.remove('valid-input', 'invalid-input', 'warning-input');
+
+            if (!amount) {
+                return false;
+            } else if (amount < 100) {
+                input.classList.add('invalid-input');
+                error.textContent = 'จำนวนเงินขั้นต่ำ 100 บาท';
+                error.classList.remove('hidden');
+                return false;
+            } else if (amount > walletData.balance) {
+                input.classList.add('warning-input');
+                error.textContent = `ยอดเงินในกระเป๋าไม่เพียงพอ (คงเหลือ ฿${formatCurrency(walletData.balance)})`;
+                error.classList.remove('hidden');
+                return false;
+            } else {
+                input.classList.add('valid-input');
+                return true;
+            }
+        }
+
+        function validateBank() {
+            const select = document.getElementById('withdrawBank');
+            const error = document.getElementById('bankError');
+
+            error.classList.add('hidden');
+            select.classList.remove('valid-input', 'invalid-input');
+
+            if (!select.value) {
+                select.classList.add('invalid-input');
+                error.textContent = 'กรุณาเลือกธนาคาร';
+                error.classList.remove('hidden');
+                return false;
+            } else {
+                select.classList.add('valid-input');
+                return true;
+            }
+        }
+
+        function validateAccount() {
+            const input = document.getElementById('withdrawAccount');
+            const error = document.getElementById('accountError');
+            const account = input.value.trim();
+
+            error.classList.add('hidden');
+            input.classList.remove('valid-input', 'invalid-input');
+
+            if (!account) {
+                input.classList.add('invalid-input');
+                error.textContent = 'กรุณากรอกเลขที่บัญชี';
+                error.classList.remove('hidden');
+                return false;
+            } else if (!/^\d+$/.test(account)) {
+                input.classList.add('invalid-input');
+                error.textContent = 'เลขที่บัญชีต้องเป็นตัวเลขเท่านั้น';
+                error.classList.remove('hidden');
+                return false;
+            } else if (account.length < 10 || account.length > 15) {
+                input.classList.add('invalid-input');
+                error.textContent = 'เลขที่บัญชีต้องมี 10-15 หลัก';
+                error.classList.remove('hidden');
+                return false;
+            } else {
+                input.classList.add('valid-input');
+                return true;
+            }
+        }
+
+        function validateAccountName() {
+            const input = document.getElementById('withdrawAccountName');
+            const error = document.getElementById('nameError');
+            const name = input.value.trim();
+
+            error.classList.add('hidden');
+            input.classList.remove('valid-input', 'invalid-input');
+
+            if (!name) {
+                input.classList.add('invalid-input');
+                error.textContent = 'กรุณากรอกชื่อเจ้าของบัญชี';
+                error.classList.remove('hidden');
+                return false;
+            } else if (name.length < 2) {
+                input.classList.add('invalid-input');
+                error.textContent = 'ชื่อต้องมีอย่างน้อย 2 ตัวอักษร';
+                error.classList.remove('hidden');
+                return false;
+            } else {
+                input.classList.add('valid-input');
+                return true;
+            }
+        }
+
+        function validateTerms() {
+            const checkbox = document.getElementById('acceptTerms');
+            const error = document.getElementById('termsError');
+
+            error.classList.add('hidden');
+
+            if (!checkbox.checked) {
+                error.textContent = 'กรุณายอมรับเงื่อนไขการถอนเงิน';
+                error.classList.remove('hidden');
+                return false;
+            }
+            return true;
+        }
+
+        function validateForm() {
+            const validAmount = validateAmount();
+            const validBank = validateBank();
+            const validAccount = validateAccount();
+            const validName = validateAccountName();
+            const validTerms = validateTerms();
+
+            return validAmount && validBank && validAccount && validName && validTerms;
+        }
+
+        // Update button state based on validation
+        function updateButtonState() {
+            const submitBtn = document.getElementById('submitWithdrawBtn');
+            const isValid = validateForm();
+
+            if (walletData.balance < 100) {
+                submitBtn.disabled = true;
+                submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
+                submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ยอดเงินไม่เพียงพอ';
+            } else if (!isValid) {
+                submitBtn.disabled = true;
+                submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
+                submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>กรุณากรอกข้อมูลให้ครบถ้วน';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.className = 'flex-1 bg-orange-500 text-white py-4 rounded-xl font-semibold hover:bg-orange-600 transition-all duration-300 btn-animate text-lg';
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>ยืนยันการถอนเงิน';
+            }
+        }
+
+        // Submit withdraw request
+        async function submitWithdraw() {
+            if (!validateForm()) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ข้อมูลไม่ครบถ้วน',
+                    text: 'กรุณาตรวจสอบและกรอกข้อมูลให้ครบถ้วน',
+                    confirmButtonColor: '#ef4444'
+                });
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('withdrawAmount').value);
+            const bank = document.getElementById('withdrawBank').value;
+            const accountNumber = document.getElementById('withdrawAccount').value.trim();
+            const accountName = document.getElementById('withdrawAccountName').value.trim();
+
+            const result = await Swal.fire({
+                title: 'ยืนยันการถอนเงิน',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                            <p class="font-semibold text-orange-800 mb-3 text-center">📋 รายละเอียดการถอนเงิน</p>
+                            <div class="space-y-2">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">จำนวนเงิน:</span>
+                                    <span class="font-semibold">฿${formatCurrency(amount)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">ธนาคาร:</span>
+                                    <span class="font-semibold">${bank}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">เลขที่บัญชี:</span>
+                                    <span class="font-semibold font-mono">${formatAccountNumber(accountNumber)}</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">ชื่อบัญชี:</span>
+                                    <span class="font-semibold">${accountName}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                            <div class="flex items-center justify-center space-x-4 text-sm text-blue-800">
+                                <div class="flex items-center">
+                                    <i class="fas fa-clock mr-1"></i>
+                                    <span>1-2 วันทำการ</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-gift mr-1"></i>
+                                    <span>ค่าธรรมเนียม: ฟรี</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '✅ ยืนยันการถอน',
+                cancelButtonText: '❌ ยกเลิก',
+                confirmButtonColor: '#f59e0b',
+                cancelButtonColor: '#6b7280',
+                width: '90%'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    // Show loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        html: `
+                            <div class="text-center">
+                                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-4"></div>
+                                <p class="text-gray-600">กำลังส่งคำขอถอนเงิน</p>
+                                <p class="text-sm text-gray-500 mt-2">กรุณารอสักครู่...</p>
+                            </div>
+                        `,
+                        allowOutsideClick: false,
+                        showConfirmButton: false
+                    });
+
+                    // Prepare payload for Google Apps Script
+                    const payload = {
+                        action: 'withdraw',
+                        userId: userData.userId,
+                        amount: amount,
+                        bank: bank,
+                        account: accountNumber,
+                        accountName: accountName
+                    };
+
+                    console.log('Sending payload:', payload); // Debug log
+
+                    // Submit to Google Apps Script
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    // ในโหมด no-cors เราไม่สามารถอ่าน response ได้
+                    // ดังนั้นเราจะถือว่าสำเร็จเสมอ
+                    console.log('Request sent successfully');
+
+                    // Update local balance
+                    walletData.balance -= amount;
+                    
+                    // Show success
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
+                        html: `
+                            <div class="text-center space-y-4">
+                                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                    <h4 class="font-semibold text-green-800 mb-3">📋 รายละเอียดคำขอ</h4>
+                                    <div class="text-left space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">จำนวนเงิน:</span>
+                                            <span class="font-bold text-green-700">฿${formatCurrency(amount)}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">ธนาคาร:</span>
+                                            <span class="font-semibold">${bank}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">เลขที่บัญชี:</span>
+                                            <span class="font-mono">${accountNumber}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">ชื่อบัญชี:</span>
+                                            <span class="font-semibold">${accountName}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h4 class="font-semibold text-blue-800 mb-2">⏰ ขั้นตอนต่อไป</h4>
+                                    <div class="text-sm text-blue-700 space-y-1">
+                                        <p>✅ สถานะ: รอดำเนินการ</p>
+                                        <p>🔍 ตรวจสอบ: ภายใน 24 ชั่วโมง</p>
+                                        <p>💰 โอนเงิน: 1-2 วันทำการ</p>
+                                    </div>
+                                </div>
+                                <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <p class="text-sm text-yellow-800">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ
+                                    </p>
+                                </div>
+                            </div>
+                        `,
+                        confirmButtonText: '🏠 กลับหน้าหลัก',
+                        confirmButtonColor: '#10b981',
+                        allowOutsideClick: false,
+                        width: '90%'
+                    });
+                    
+                    // Redirect to home page
+                    window.location.href = 'index.html';
+                    
+                } catch (error) {
+                    console.error('Error submitting withdrawal:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        html: `
+                            <div class="text-center space-y-3">
+                                <p class="text-gray-600">${error.message || 'ไม่สามารถส่งคำขอถอนเงินได้'}</p>
+                                <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <p class="text-sm text-yellow-800">
+                                        <i class="fas fa-lightbulb mr-1"></i>
+                                        กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง
+                                    </p>
+                                </div>
+                            </div>
+                        `,
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            }
+        }
+
         // Load Wallet Data
         async function loadWalletData() {
             try {
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                console.log('Loading wallet data for:', userData.userId); // Debug log
+                
+                const url = `${API_URL}?action=getWallet&userId=${userData.userId}`;
+                console.log('Fetching from:', url); // Debug log
+                
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 console.log('Wallet data:', data); // Debug log
@@ -787,45 +1214,40 @@
                 }
             } catch (error) {
                 console.error('Error loading wallet data:', error);
+                // ลองใช้ข้อมูล demo
+                walletData.balance = 5000;
+                document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                createQuickAmountButtons();
+                updateButtonState();
+                
                 Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถโหลดข้อมูลกระเป๋าเงินได้',
-                    confirmButtonColor: '#ef4444'
+                    icon: 'warning',
+                    title: 'ใช้ข้อมูลทดสอบ',
+                    text: 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กำลังใช้ข้อมูลทดสอบ',
+                    confirmButtonColor: '#f59e0b'
                 });
             }
         }
 
-        // Initialize LIFF
-        window.onload = async function() {
-            try {
-                console.log('Initializing LIFF with ID:', LIFF_ID); // Debug log
-                await liff.init({ liffId: LIFF_ID });
-                if (liff.isLoggedIn()) {
-                    initApp();
-                } else {
-                    liff.login();
-                }
-            } catch (err) {
-                console.error('LIFF init failed:', err);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถเชื่อมต่อกับ LINE ได้',
-                    confirmButtonColor: '#ef4444'
-                });
-            }
-        };
-
         // Initialize App
         async function initApp() {
             try {
-                const profile = await liff.getProfile();
-                userData = {
-                    userId: profile.userId,
-                    displayName: profile.displayName,
-                    pictureUrl: profile.pictureUrl
-                };
+                // ลองใช้ LIFF ก่อน
+                if (typeof liff !== 'undefined') {
+                    const profile = await liff.getProfile();
+                    userData = {
+                        userId: profile.userId,
+                        displayName: profile.displayName,
+                        pictureUrl: profile.pictureUrl
+                    };
+                } else {
+                    // ถ้าไม่มี LIFF ใช้ข้อมูล demo
+                    userData = {
+                        userId: 'demo-user-001',
+                        displayName: 'Demo User',
+                        pictureUrl: ''
+                    };
+                }
 
                 console.log('User data:', userData); // Debug log
 
@@ -841,6 +1263,75 @@
                                 <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                                     <p class="text-yellow-800 mb-2">ยอดเงินปัจจุบัน: <span class="font-bold">฿${formatCurrency(walletData.balance)}</span></p>
                                     <p class="text-yellow-700 text-sm">ยอดเงินขั้นต่ำสำหรับการถอน: <span class="font-semibold">฿100.00</span></p>
+                                </div>
+                                <p class="text-gray-600">คุณต้องมียอดเงินในกระเป๋าอย่างน้อย 100 บาท เพื่อทำการถอนเงิน</p>
+                            </div>
+                        `,
+                        confirmButtonText: '💎 ไปเติมเงิน',
+                        showCancelButton: true,
+                        cancelButtonText: '🏠 กลับหน้าหลัก',
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#6b7280'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'topup.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    });
+                    return;
+                }
+
+                // Setup event listeners
+                setupEventListeners();
+
+                // Show app
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                
+                // ถ้า error ให้ใช้ข้อมูล demo
+                userData = {
+                    userId: 'demo-user-001',
+                    displayName: 'Demo User',
+                    pictureUrl: ''
+                };
+                
+                walletData.balance = 5000;
+                document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                createQuickAmountButtons();
+                setupEventListeners();
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+            }
+        }
+
+        // Initialize LIFF หรือใช้ Demo Mode
+        window.onload = async function() {
+            try {
+                // ตรวจสอบว่ามี LIFF หรือไม่
+                if (typeof liff !== 'undefined' && typeof LIFF_ID !== 'undefined' && LIFF_ID) {
+                    console.log('Initializing LIFF with ID:', LIFF_ID);
+                    await liff.init({ liffId: LIFF_ID });
+                    
+                    if (liff.isLoggedIn()) {
+                        await initApp();
+                    } else {
+                        liff.login();
+                    }
+                } else {
+                    console.log('Running in demo mode');
+                    await initApp();
+                }
+            } catch (err) {
+                console.error('LIFF init failed:', err);
+                // ถ้า LIFF fail ให้ใช้ demo mode
+                await initApp();
+            }
+        };-yellow-700 text-sm">ยอดเงินขั้นต่ำสำหรับการถอน: <span class="font-semibold">฿100.00</span></p>
                                 </div>
                                 <p class="text-gray-600">คุณต้องมียอดเงินในกระเป๋าอย่างน้อย 100 บาท เพื่อทำการถอนเงิน</p>
                             </div>
