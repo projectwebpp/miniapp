@@ -38,6 +38,38 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        .mobile-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+        }
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -47,7 +79,7 @@
             <i class="fas fa-arrow-left"></i>
         </button>
         <h1 class="page-title">ถอนเงิน</h1>
-        <div class="w-10"></div> <!-- Spacer for center alignment -->
+        <div class="w-10"></div>
     </div>
 
     <!-- Loading Screen -->
@@ -109,19 +141,7 @@
                         </label>
                         <select id="withdrawBank" class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg">
                             <option value="">-- เลือกธนาคาร --</option>
-                            <option value="ธนาคารกรุงเทพ">ธนาคารกรุงเทพ (BBL)</option>
-                            <option value="ธนาคารกสิกรไทย">ธนาคารกสิกรไทย (KBANK)</option>
-                            <option value="ธนาคารไทยพาณิชย์">ธนาคารไทยพาณิชย์ (SCB)</option>
-                            <option value="ธนาคารกรุงไทย">ธนาคารกรุงไทย (KTB)</option>
-                            <option value="ธนาคารทหารไทยธนชาต">ธนาคารทหารไทยธนชาต (TTB)</option>
-                            <option value="ธนาคารกรุงศรีอยุธยา">ธนาคารกรุงศรีอยุธยา (BAY)</option>
-                            <option value="ธนาคารเกียรตินาคินภัทร">ธนาคารเกียรตินาคินภัทร (KKP)</option>
-                            <option value="ธนาคารซีไอเอ็มบี ไทย">ธนาคารซีไอเอ็มบี ไทย (CIMB)</option>
-                            <option value="ธนาคารยูโอบี">ธนาคารยูโอบี (UOB)</option>
-                            <option value="ธนาคารแลนด์ แอนด์ เฮ้าส์">ธนาคารแลนด์ แอนด์ เฮ้าส์ (LHFG)</option>
-                            <option value="ธนาคารออมสิน">ธนาคารออมสิน (GSB)</option>
-                            <option value="ธนาคารอาคารสงเคราะห์">ธนาคารอาคารสงเคราะห์ (GHB)</option>
-                            <option value="ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร">ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร (BAAC)</option>
+                            <!-- จะถูกเติมด้วย JavaScript จาก API -->
                         </select>
                         <div id="bankError" class="text-xs text-red-500 mt-1 hidden"></div>
                     </div>
@@ -203,14 +223,20 @@
         </div>
     </div>
     
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
-        // Global Variables
+        // ===== Configuration =====
+        const CONFIG = {
+            API_URL: 'https://script.google.com/macros/s/AKfycbzFo7RGF4Ye1sJIz15J-oOgOCbJJE9WzKBNI9GzwdAhCHDC9t71NlXWDbNi1UucYm6g/exec',
+            LIFF_ID: '2006453326-vXgbO9NL', // แทนที่ด้วย LIFF ID จริง
+            MIN_WITHDRAW_AMOUNT: 100
+        };
+
+        // ===== Global Variables =====
         let userData = {};
         let walletData = { balance: 0 };
+        let bankAccounts = [];
 
-        // Utility Functions
+        // ===== Utility Functions =====
         function formatCurrency(amount) {
             return new Intl.NumberFormat('th-TH', {
                 minimumFractionDigits: 2,
@@ -227,12 +253,11 @@
             return accountNumber;
         }
 
-        // Go back function
         function goBack() {
             window.history.back();
         }
 
-        // Show terms modal
+        // ===== Show Terms Modal =====
         function showTerms() {
             Swal.fire({
                 title: 'เงื่อนไขการถอนเงิน',
@@ -259,7 +284,7 @@
                             <ul class="space-y-1 text-green-700">
                                 <li>• สามารถยกเลิกได้ก่อนการอนุมัติ</li>
                                 <li>• หลังอนุมัติแล้วไม่สามารถยกเลิกได้</li>
-                                <li>• กรณี Hareketplace
+                                <li>• กรณีมีปัญหาติดต่อฝ่ายลูกค้าสัมพันธ์</li>
                             </ul>
                         </div>
                     </div>
@@ -270,9 +295,68 @@
             });
         }
 
-        // Create quick amount buttons
+        // ===== Load Bank Accounts =====
+        async function loadBankAccounts() {
+            try {
+                const response = await fetch(`${CONFIG.API_URL}?action=getBankAccounts`);
+                const data = await response.json();
+                
+                if (data.success && data.bankAccounts) {
+                    bankAccounts = data.bankAccounts;
+                    populateBankSelect();
+                } else {
+                    console.error('Failed to load bank accounts:', data.message);
+                    // ใช้ข้อมูลธนาคารเริ่มต้น
+                    populateBankSelect();
+                }
+            } catch (error) {
+                console.error('Error loading bank accounts:', error);
+                populateBankSelect();
+            }
+        }
+
+        function populateBankSelect() {
+            const select = document.getElementById('withdrawBank');
+            
+            // ลบ option เดิมทั้งหมด ยกเว้น option แรก
+            while (select.children.length > 1) {
+                select.removeChild(select.lastChild);
+            }
+
+            // ธนาคารเริ่มต้นถ้าไม่มีข้อมูลจาก API
+            const defaultBanks = [
+                'ธนาคารกรุงเทพ',
+                'ธนาคารกสิกรไทย',
+                'ธนาคารไทยพาณิชย์',
+                'ธนาคารกรุงไทย',
+                'ธนาคารทหารไทยธนชาต',
+                'ธนาคารกรุงศรีอยุธยา',
+                'ธนาคารเกียรตินาคินภัทร',
+                'ธนาคารซีไอเอ็มบี ไทย',
+                'ธนาคารยูโอบี',
+                'ธนาคารแลนด์ แอนด์ เฮ้าส์',
+                'ธนาคารออมสิน',
+                'ธนาคารอาคารสงเคราะห์',
+                'ธนาคารเพื่อการเกษตรและสหกรณ์การเกษตร'
+            ];
+
+            const banksToUse = bankAccounts.length > 0 
+                ? bankAccounts.map(b => b.bankName) 
+                : defaultBanks;
+
+            banksToUse.forEach(bankName => {
+                const option = document.createElement('option');
+                option.value = bankName;
+                option.textContent = bankName;
+                select.appendChild(option);
+            });
+        }
+
+        // ===== Create Quick Amount Buttons =====
         function createQuickAmountButtons() {
             const container = document.getElementById('quickAmountButtons');
+            container.innerHTML = ''; // ล้างปุ่มเดิม
+            
             const amounts = [500, 1000, 2000, 3000, 5000];
             
             amounts.forEach(amount => {
@@ -290,8 +374,8 @@
                 }
             });
 
-            // Add "ทั้งหมด" button if balance >= 100
-            if (walletData.balance >= 100) {
+            // Add "ทั้งหมด" button if balance >= MIN_AMOUNT
+            if (walletData.balance >= CONFIG.MIN_WITHDRAW_AMOUNT) {
                 const allButton = document.createElement('button');
                 allButton.type = 'button';
                 allButton.className = 'px-3 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors border border-blue-200';
@@ -305,7 +389,7 @@
             }
         }
 
-        // Validation Functions
+        // ===== Validation Functions =====
         function validateAmount() {
             const input = document.getElementById('withdrawAmount');
             const error = document.getElementById('amountError');
@@ -316,9 +400,9 @@
 
             if (!amount) {
                 return false;
-            } else if (amount < 100) {
+            } else if (amount < CONFIG.MIN_WITHDRAW_AMOUNT) {
                 input.classList.add('invalid-input');
-                error.textContent = 'จำนวนเงินขั้นต่ำ 100 บาท';
+                error.textContent = `จำนวนเงินขั้นต่ำ ${CONFIG.MIN_WITHDRAW_AMOUNT} บาท`;
                 error.classList.remove('hidden');
                 return false;
             } else if (amount > walletData.balance) {
@@ -427,12 +511,12 @@
             return validAmount && validBank && validAccount && validName && validTerms;
         }
 
-        // Update button state based on validation
+        // ===== Update Button State =====
         function updateButtonState() {
             const submitBtn = document.getElementById('submitWithdrawBtn');
             const isValid = validateForm();
 
-            if (walletData.balance < 100) {
+            if (walletData.balance < CONFIG.MIN_WITHDRAW_AMOUNT) {
                 submitBtn.disabled = true;
                 submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
                 submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ยอดเงินไม่เพียงพอ';
@@ -447,7 +531,7 @@
             }
         }
 
-        // Submit withdraw request
+        // ===== Submit Withdraw Request =====
         async function submitWithdraw() {
             if (!validateForm()) {
                 Swal.fire({
@@ -514,18 +598,7 @@
 
             if (result.isConfirmed) {
                 try {
-                    // Create payload for withdraw request
-                    const payload = {
-                        action: 'handleWithdraw',
-                        userId: userData.userId,
-                        userName: userData.displayName,
-                        amount: amount,
-                        bank: bank,
-                        account: accountNumber,
-                        accountName: accountName
-                    };
-
-                    // Show loading
+                    // แสดง Loading
                     Swal.fire({
                         title: 'กำลังดำเนินการ...',
                         html: `
@@ -539,8 +612,18 @@
                         showConfirmButton: false
                     });
 
-                    // Submit to Google Apps Script
-                    const response = await fetch(API_URL, {
+                    // สร้าง payload สำหรับ API ตาม Google Apps Script ที่ปรับปรุงแล้ว
+                    const payload = {
+                        action: 'withdraw',
+                        userId: userData.userId,
+                        amount: amount,
+                        bank: bank,
+                        account: accountNumber,
+                        accountName: accountName
+                    };
+
+                    // ส่งข้อมูลไปยัง Google Apps Script
+                    const response = await fetch(CONFIG.API_URL, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -615,17 +698,17 @@
             }
         }
 
-        // Load Wallet Data
+        // ===== Load Wallet Data =====
         async function loadWalletData() {
             try {
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const response = await fetch(`${CONFIG.API_URL}?action=getWallet&userId=${userData.userId}`);
                 const data = await response.json();
                 
                 if (data.success) {
                     walletData.balance = data.balance || 0;
                     document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
                     
-                    // Create quick amount buttons after loading balance
+                    // สร้างปุ่มจำนวนด่วนหลังจากโหลดยอดเงิน
                     createQuickAmountButtons();
                     updateButtonState();
                 } else {
@@ -642,10 +725,10 @@
             }
         }
 
-        // Initialize LIFF
+        // ===== Initialize LIFF =====
         window.onload = async function() {
             try {
-                await liff.init({ liffId: LIFF_ID });
+                await liff.init({ liffId: CONFIG.LIFF_ID });
                 if (liff.isLoggedIn()) {
                     initApp();
                 } else {
@@ -662,7 +745,7 @@
             }
         };
 
-        // Initialize App
+        // ===== Initialize App =====
         async function initApp() {
             try {
                 const profile = await liff.getProfile();
@@ -672,10 +755,14 @@
                     pictureUrl: profile.pictureUrl
                 };
 
-                await loadWalletData();
+                // โหลดข้อมูลทั้งหมด
+                await Promise.all([
+                    loadWalletData(),
+                    loadBankAccounts()
+                ]);
 
-                // Check if user has sufficient balance
-                if (walletData.balance < 100) {
+                // ตรวจสอบยอดเงินขั้นต่ำ
+                if (walletData.balance < CONFIG.MIN_WITHDRAW_AMOUNT) {
                     await Swal.fire({
                         icon: 'warning',
                         title: '💰 ยอดเงินไม่เพียงพอ',
@@ -683,9 +770,9 @@
                             <div class="text-center space-y-4">
                                 <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                                     <p class="text-yellow-800 mb-2">ยอดเงินปัจจุบัน: <span class="font-bold">฿${formatCurrency(walletData.balance)}</span></p>
-                                    <p class="text-yellow-700 text-sm">ยอดเงินขั้นต่ำสำหรับการถอน: <span class="font-semibold">฿100.00</span></p>
+                                    <p class="text-yellow-700 text-sm">ยอดเงินขั้นต่ำสำหรับการถอน: <span class="font-semibold">฿${CONFIG.MIN_WITHDRAW_AMOUNT}.00</span></p>
                                 </div>
-                                <p class="text-gray-600">คุณต้องมียอดเงินในกระเป๋าอย่างน้อย 100 บาท เพื่อทำการถอนเงิน</p>
+                                <p class="text-gray-600">คุณต้องมียอดเงินในกระเป๋าอย่างน้อย ${CONFIG.MIN_WITHDRAW_AMOUNT} บาท เพื่อทำการถอนเงิน</p>
                             </div>
                         `,
                         confirmButtonText: '💎 ไปเติมเงิน',
@@ -703,10 +790,10 @@
                     return;
                 }
 
-                // Set up event listeners
+                // ตั้งค่า Event Listeners
                 setupEventListeners();
 
-                // Show app
+                // แสดงแอป
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
                 
@@ -721,7 +808,7 @@
             }
         }
 
-        // Setup event listeners
+        // ===== Setup Event Listeners =====
         function setupEventListeners() {
             const amountInput = document.getElementById('withdrawAmount');
             const bankSelect = document.getElementById('withdrawBank');
@@ -745,7 +832,7 @@
 
             // Account number validation (only numbers)
             accountInput.addEventListener('input', function() {
-                // Remove any non-numeric characters
+                // เอาตัวอักษรที่ไม่ใช่ตัวเลขออก
                 this.value = this.value.replace(/[^0-9]/g, '');
                 validateAccount();
                 updateButtonState();
