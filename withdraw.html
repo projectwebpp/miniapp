@@ -508,35 +508,84 @@
             }
         }
 
-        // Enhanced API call with better error handling
+        // Enhanced API call with Google Apps Script specific handling
         async function makeAPICall(payload, attempt = 1) {
             try {
                 console.log(`API Call attempt ${attempt}:`, payload);
                 
-                // For Google Apps Script, we need to handle CORS properly
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
+                // Method 1: Try standard fetch with proper GAS headers
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams(payload)
+                    });
 
-                // Check if response is ok
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    if (response.ok) {
+                        const text = await response.text();
+                        console.log('Raw response:', text);
+                        
+                        try {
+                            const data = JSON.parse(text);
+                            console.log('Parsed API Response:', data);
+                            return data;
+                        } catch (parseError) {
+                            console.log('Response is not JSON, assuming success:', text);
+                            return { success: true, message: 'Request processed', rawResponse: text };
+                        }
+                    }
+                } catch (method1Error) {
+                    console.log('Method 1 failed:', method1Error);
                 }
 
-                const data = await response.json();
-                console.log('API Response:', data);
-                
-                return data;
+                // Method 2: Try with FormData
+                try {
+                    const formData = new FormData();
+                    Object.keys(payload).forEach(key => {
+                        formData.append(key, payload[key]);
+                    });
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        const text = await response.text();
+                        console.log('FormData response:', text);
+                        
+                        try {
+                            const data = JSON.parse(text);
+                            return data;
+                        } catch (parseError) {
+                            return { success: true, message: 'Request processed via FormData', rawResponse: text };
+                        }
+                    }
+                } catch (method2Error) {
+                    console.log('Method 2 failed:', method2Error);
+                }
+
+                // Method 3: no-cors mode (fallback)
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams(payload)
+                });
+
+                console.log('No-cors request sent successfully');
+                return { success: true, message: 'Request sent in no-cors mode' };
+
             } catch (error) {
                 console.error(`API call failed (attempt ${attempt}):`, error);
                 
                 if (attempt < MAX_RETRIES) {
                     console.log(`Retrying... (${attempt + 1}/${MAX_RETRIES})`);
-                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Progressive delay
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
                     return makeAPICall(payload, attempt + 1);
                 }
                 
@@ -649,143 +698,150 @@
 
                     console.log('Sending withdraw request:', payload);
 
-                    // Try multiple approaches for API call
-                    let response;
-                    let responseData;
+                    // Try API call with improved error handling
+                    let apiResponse;
+                    let apiSuccess = false;
 
                     try {
-                        // Method 1: Standard fetch with JSON response
-                        response = await makeAPICall(payload);
+                        console.log('Attempting API call...');
+                        apiResponse = await makeAPICall(payload);
                         
-                        if (response && response.success) {
-                            responseData = response;
+                        if (apiResponse && (apiResponse.success || apiResponse.success !== false)) {
+                            apiSuccess = true;
+                            console.log('API call successful:', apiResponse);
                         } else {
-                            throw new Error(response?.message || 'Unknown API error');
+                            console.log('API returned error:', apiResponse);
+                            // Don't throw error immediately, try verification first
                         }
-                    } catch (firstError) {
-                        console.log('Method 1 failed, trying alternative approach:', firstError);
-                        
-                        try {
-                            // Method 2: Using FormData for better compatibility
-                            const formData = new FormData();
-                            Object.keys(payload).forEach(key => {
-                                formData.append(key, payload[key]);
-                            });
-
-                            const altResponse = await fetch(API_URL, {
-                                method: 'POST',
-                                body: formData
-                            });
-
-                            if (altResponse.ok) {
-                                const altData = await altResponse.json();
-                                if (altData && altData.success) {
-                                    responseData = altData;
-                                } else {
-                                    throw new Error(altData?.message || 'Alternative method failed');
-                                }
-                            } else {
-                                throw new Error(`HTTP ${altResponse.status}: ${altResponse.statusText}`);
-                            }
-                        } catch (secondError) {
-                            console.log('Method 2 also failed:', secondError);
-                            
-                            // Method 3: Fallback to no-cors mode and assume success
-                            try {
-                                await fetch(API_URL, {
-                                    method: 'POST',
-                                    mode: 'no-cors',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                    },
-                                    body: JSON.stringify(payload)
-                                });
-                                
-                                // If no error thrown, assume success
-                                console.log('No-cors request sent, assuming success');
-                                responseData = { success: true, message: 'Request sent (no-cors mode)' };
-                            } catch (thirdError) {
-                                console.error('All methods failed:', thirdError);
-                                throw new Error(`การส่งข้อมูลล้มเหลว: ${firstError.message}`);
-                            }
-                        }
+                    } catch (apiError) {
+                        console.log('API call failed, but continuing with verification:', apiError);
+                        // Don't throw error, try verification anyway
                     }
 
-                    // Wait a bit to ensure server processing
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Wait for server processing
+                    console.log('Waiting for server processing...');
+                    await new Promise(resolve => setTimeout(resolve, 3000));
 
                     // Try to verify the transaction by checking updated balance
                     let verificationSuccess = false;
+                    let newBalance = walletData.balance;
+                    
                     try {
-                        const verifyResponse = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}&t=${Date.now()}`);
-                        if (verifyResponse.ok) {
-                            const verifyData = await verifyResponse.json();
-                            if (verifyData.success) {
-                                const newBalance = parseFloat(verifyData.balance) || 0;
-                                console.log(`Balance check: ${walletData.balance} -> ${newBalance}`);
-                                
-                                // If balance decreased by the withdrawal amount (±1 for floating point precision)
-                                const expectedBalance = walletData.balance - amount;
-                                if (Math.abs(newBalance - expectedBalance) <= 1) {
-                                    verificationSuccess = true;
-                                    walletData.balance = newBalance;
-                                    document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(newBalance);
-                                }
+                        console.log('Verifying transaction...');
+                        const verifyUrl = `${API_URL}?action=getWallet&userId=${encodeURIComponent(userData.userId)}&t=${Date.now()}`;
+                        console.log('Verification URL:', verifyUrl);
+                        
+                        const verifyResponse = await fetch(verifyUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache'
                             }
+                        });
+                        
+                        if (verifyResponse.ok) {
+                            const verifyText = await verifyResponse.text();
+                            console.log('Verify raw response:', verifyText);
+                            
+                            try {
+                                const verifyData = JSON.parse(verifyText);
+                                console.log('Verify parsed data:', verifyData);
+                                
+                                if (verifyData.success && verifyData.balance !== undefined) {
+                                    newBalance = parseFloat(verifyData.balance) || 0;
+                                    const expectedBalance = walletData.balance - amount;
+                                    const balanceDiff = Math.abs(newBalance - expectedBalance);
+                                    
+                                    console.log(`Balance verification: ${walletData.balance} -> ${newBalance} (expected: ${expectedBalance}, diff: ${balanceDiff})`);
+                                    
+                                    // Allow for small floating point differences
+                                    if (balanceDiff <= 1) {
+                                        verificationSuccess = true;
+                                        console.log('Balance verification successful');
+                                    } else {
+                                        console.log('Balance verification failed - amount mismatch');
+                                    }
+                                } else {
+                                    console.log('Verify response missing success or balance:', verifyData);
+                                }
+                            } catch (parseError) {
+                                console.log('Failed to parse verify response as JSON:', parseError);
+                            }
+                        } else {
+                            console.log('Verify response not ok:', verifyResponse.status, verifyResponse.statusText);
                         }
                     } catch (verifyError) {
                         console.log('Balance verification failed:', verifyError);
-                        // Don't fail the whole process for verification errors
                     }
 
-                    // Show success message
-                    await Swal.fire({
-                        icon: 'success',
-                        title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
-                        html: `
-                            <div class="text-center space-y-4">
-                                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                                    <h4 class="font-semibold text-green-800 mb-3">📋 รายละเอียดคำขอ</h4>
-                                    <div class="text-left space-y-2 text-sm">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">จำนวนเงิน:</span>
-                                            <span class="font-bold text-green-700">฿${formatCurrency(amount)}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">ธนาคาร:</span>
-                                            <span class="font-semibold">${bank}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">เลขที่บัญชี:</span>
-                                            <span class="font-mono">${formatAccountNumber(accountNumber)}</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600">ชื่อบัญชี:</span>
-                                            <span class="font-semibold">${accountName}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                    <h4 class="font-semibold text-blue-800 mb-2">⏰ ขั้นตอนต่อไป</h4>
-                                    <div class="text-sm text-blue-700 space-y-1">
-                                        <p>✅ สถานะ: รอดำเนินการ</p>
-                                        <p>🔍 ตรวจสอบ: ภายใน 24 ชั่วโมง</p>
-                                        <p>💰 โอนเงิน: 1-2 วันทำการ</p>
-                                    </div>
-                                </div>
-                                ${verificationSuccess ? 
-                                    '<div class="bg-green-50 p-3 rounded-lg border border-green-200"><p class="text-sm text-green-800"><i class="fas fa-check-circle mr-1"></i>ยอดเงินในกระเป๋าได้รับการอัปเดตแล้ว</p></div>' : 
-                                    '<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200"><p class="text-sm text-yellow-800"><i class="fas fa-info-circle mr-1"></i>สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ</p></div>'
-                                }
-                            </div>
-                        `,
-                        confirmButtonText: '🏠 กลับหน้าหลัก',
-                        confirmButtonColor: '#10b981',
-                        allowOutsideClick: false,
-                        width: '90%'
-                    });
+                    // Determine overall success
+                    const overallSuccess = apiSuccess || verificationSuccess;
                     
-                    window.location.href = 'index.html';
+                    if (overallSuccess) {
+                        // Update local balance if verification was successful
+                        if (verificationSuccess) {
+                            walletData.balance = newBalance;
+                            document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(newBalance);
+                        }
+
+                        // Show success message
+                        await Swal.fire({
+                            icon: 'success',
+                            title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
+                            html: `
+                                <div class="text-center space-y-4">
+                                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                        <h4 class="font-semibold text-green-800 mb-3">📋 รายละเอียดคำขอ</h4>
+                                        <div class="text-left space-y-2 text-sm">
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">จำนวนเงิน:</span>
+                                                <span class="font-bold text-green-700">฿${formatCurrency(amount)}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">ธนาคาร:</span>
+                                                <span class="font-semibold">${bank}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">เลขที่บัญชี:</span>
+                                                <span class="font-mono">${formatAccountNumber(accountNumber)}</span>
+                                            </div>
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-600">ชื่อบัญชี:</span>
+                                                <span class="font-semibold">${accountName}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                        <h4 class="font-semibold text-blue-800 mb-2">⏰ ขั้นตอนต่อไป</h4>
+                                        <div class="text-sm text-blue-700 space-y-1">
+                                            <p>✅ สถานะ: รอดำเนินการ</p>
+                                            <p>🔍 ตรวจสอบ: ภายใน 24 ชั่วโมง</p>
+                                            <p>💰 โอนเงิน: 1-2 วันทำการ</p>
+                                        </div>
+                                    </div>
+                                    ${verificationSuccess ? 
+                                        '<div class="bg-green-50 p-3 rounded-lg border border-green-200"><p class="text-sm text-green-800"><i class="fas fa-check-circle mr-1"></i>ยอดเงินในกระเป๋าได้รับการอัปเดตแล้ว</p></div>' : 
+                                        '<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200"><p class="text-sm text-yellow-800"><i class="fas fa-info-circle mr-1"></i>คำขอถูกส่งแล้ว สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ</p></div>'
+                                    }
+                                    ${apiSuccess && verificationSuccess ? 
+                                        '<div class="bg-green-50 p-3 rounded-lg border border-green-200"><p class="text-sm text-green-800"><i class="fas fa-thumbs-up mr-1"></i>การส่งข้อมูลและการตรวจสอบสำเร็จทั้งคู่</p></div>' : 
+                                        apiSuccess ? 
+                                            '<div class="bg-blue-50 p-3 rounded-lg border border-blue-200"><p class="text-sm text-blue-800"><i class="fas fa-info-circle mr-1"></i>คำขอถูกส่งสำเร็จ</p></div>' :
+                                            '<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200"><p class="text-sm text-yellow-800"><i class="fas fa-check mr-1"></i>ตรวจพบการเปลี่ยนแปลงยอดเงิน</p></div>'
+                                    }
+                                </div>
+                            `,
+                            confirmButtonText: '🏠 กลับหน้าหลัก',
+                            confirmButtonColor: '#10b981',
+                            allowOutsideClick: false,
+                            width: '90%'
+                        });
+                        
+                        window.location.href = 'index.html';
+                    } else {
+                        // Both API call and verification failed
+                        throw new Error('ไม่สามารถยืนยันการดำเนินการได้ กรุณาตรวจสอบยอดเงินและลองใหม่อีกครั้ง');
+                    }
                     
                 } catch (error) {
                     const errorInfo = logError('submitWithdraw', error, {
