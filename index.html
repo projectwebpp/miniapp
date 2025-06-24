@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบออมทอง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
+            <p class="text-gray-600">กำลังโหลด...</p>
+        </div>
+    </div>
+
+    <!-- Main App (hidden by default) -->
+    <div id="app" class="hidden min-h-screen">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-yellow-400 to-amber-500 p-4 shadow-lg">
+            <div class="flex items-center space-x-3">
+                <img id="userPic" src="" alt="Profile" class="w-12 h-12 rounded-full border-2 border-white">
+                <div class="flex-1">
+                    <h1 class="text-white font-bold text-lg">ระบบออมทอง</h1>
+                    <p id="userName" class="text-white text-sm"></p>
+                </div>
+                <div class="text-right">
+                    <p id="totalGold" class="text-white font-bold text-xl">0 กรัม</p>
+                    <p id="totalValue" class="text-white text-sm">มูลค่า: ฿0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs flex bg-white border-b">
+            <button id="portfolioTab" onclick="switchTab('portfolio')" class="tab flex-1 py-3 text-center font-semibold tab-active btn-animate">
+                <i class="fas fa-chart-pie mr-2"></i>พอร์ตโฟลิโอ
+            </button>
+            <button id="dashboardTab" onclick="switchTab('dashboard')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
+                <i class="fas fa-chart-line mr-2"></i>ราคาทอง
+            </button>
+            <button id="walletTab" onclick="switchTab('wallet')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
+                <i class="fas fa-wallet mr-2"></i>กระเป๋าเงิน
+            </button>
+        </div>
+
+        <!-- Portfolio Content -->
+        <div id="portfolioContent" class="p-4 page-container">
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="navigateToPage('buy.html')" class="bg-green-500 text-white py-4 rounded-lg font-semibold hover:bg-green-600 transition card-hover btn-animate">
+                    <i class="fas fa-plus-circle mr-2"></i>ซื้อทอง
+                </button>
+                <button onclick="navigateToPage('sell.html')" class="bg-red-500 text-white py-4 rounded-lg font-semibold hover:bg-red-600 transition card-hover btn-animate">
+                    <i class="fas fa-minus-circle mr-2"></i>ขายทอง
+                </button>
+            </div>
+
+            <!-- Gold Balance Cards -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow card-hover">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">ทองคำแท่ง</p>
+                            <p id="barGold" class="text-xl font-bold text-yellow-600">0 กรัม</p>
+                        </div>
+                        <i class="fas fa-coins text-3xl text-yellow-500"></i>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow card-hover">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">ทองรูปพรรณ</p>
+                            <p id="ornamentGold" class="text-xl font-bold text-yellow-600">0 กรัม</p>
+                        </div>
+                        <i class="fas fa-gem text-3xl text-yellow-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="bg-white rounded-lg shadow p-4 card-hover">
+                <h3 class="font-bold text-lg mb-4"><i class="fas fa-history mr-2"></i>ประวัติการทำรายการ</h3>
+                <div id="transactionList" class="space-y-3">
+                    <p class="text-gray-500 text-center">กำลังโหลด...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" class="p-4 hidden page-container">
+            <p class="text-center text-gray-500">กำลังโหลดข้อมูลราคาทอง...</p>
+        </div>
+
+        <!-- Wallet Content -->
+        <div id="walletContent" class="p-4 hidden page-container">
+            <!-- Wallet Balance -->
+            <div class="bg-white rounded-lg shadow p-6 mb-4 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">ยอดเงินคงเหลือ</p>
+                        <p id="walletBalance" class="text-3xl font-bold text-green-600">฿0.00</p>
+                    </div>
+                    <i class="fas fa-wallet text-5xl text-green-500"></i>
+                </div>
+            </div>
+
+            <!-- Wallet Actions -->
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <button onclick="navigateToPage('topup.html')" class="bg-blue-500 text-white py-4 rounded-lg font-semibold hover:bg-blue-600 transition card-hover btn-animate">
+                    <i class="fas fa-plus mr-2"></i>เติมเงิน
+                </button>
+                <button onclick="navigateToPage('withdraw.html')" class="bg-orange-500 text-white py-4 rounded-lg font-semibold hover:bg-orange-600 transition card-hover btn-animate">
+                    <i class="fas fa-minus mr-2"></i>ถอนเงิน
+                </button>
+            </div>
+
+            <!-- Wallet History -->
+            <div class="bg-white rounded-lg shadow p-4 card-hover">
+                <h3 class="font-bold text-lg mb-4"><i class="fas fa-list mr-2"></i>ประวัติกระเป๋าเงิน</h3>
+                <div id="walletHistory" class="space-y-3">
+                    <p class="text-gray-500 text-center">กำลังโหลด...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script>
+        // Global Variables
+        let userData = {};
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
+        let walletData = { balance: 0, transactions: [] };
+
+        // Navigation function
+        function navigateToPage(page) {
+            window.location.href = page;
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            const portfolioTab = document.getElementById('portfolioTab');
+            const dashboardTab = document.getElementById('dashboardTab');
+            const walletTab = document.getElementById('walletTab');
+            const portfolioContent = document.getElementById('portfolioContent');
+            const dashboardContent = document.getElementById('dashboardContent');
+            const walletContent = document.getElementById('walletContent');
+
+            // Reset all tabs
+            portfolioTab.classList.remove('tab-active');
+            dashboardTab.classList.remove('tab-active');
+            walletTab.classList.remove('tab-active');
+            portfolioContent.classList.add('hidden');
+            dashboardContent.classList.add('hidden');
+            walletContent.classList.add('hidden');
+
+            // Activate selected tab
+            if (tab === 'portfolio') {
+                portfolioTab.classList.add('tab-active');
+                portfolioContent.classList.remove('hidden');
+            } else if (tab === 'dashboard') {
+                dashboardTab.classList.add('tab-active');
+                dashboardContent.classList.remove('hidden');
+                loadDashboard();
+            } else if (tab === 'wallet') {
+                walletTab.classList.add('tab-active');
+                walletContent.classList.remove('hidden');
+                loadWalletData();
+            }
+        }
+
+        // Load dashboard content
+        function loadDashboard() {
+            window.location.href = 'dashboard.html';
+        }
+
+        // Initialize LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                await fetchBankAccounts();
+                if (liff.isLoggedIn()) {
+                    const pricesFetched = await fetchGoldPrices();
+                    console.log('Initial price fetch successful:', pricesFetched);
+                    initApp();
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error('LIFF init failed:', err);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+            }
+        };
+
+        // Initialize App
+        async function initApp() {
+            try {
+                const profile = await liff.getProfile();
+                userData = {
+                    userId: profile.userId,
+                    name: profile.displayName,
+                    picture: profile.pictureUrl
+                };
+                document.getElementById('userName').textContent = userData.name;
+                document.getElementById('userPic').src = userData.picture;
+                await loadGoldData();
+                await loadTransactions();
+                await loadWalletData();
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+            }
+        }
+
+        // Load Gold Data
+        async function loadGoldData() {
+            try {
+                const response = await fetch(`${API_URL}?action=getBalance&userId=${userData.userId}`);
+                const data = await response.json();
+                if (data.success) {
+                    currentGoldData.totalGold = data.totalGold || 0;
+                    currentGoldData.avgPrice = data.avgPrice || 0;
+                    currentGoldData.balances = data.balances || { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } };
+                    const totalValue = (currentGoldData.totalGold / GRAMS_PER_BAHT) * currentGoldData.avgPrice;
+                    
+                    document.getElementById('totalGold').textContent = formatNumber(currentGoldData.totalGold) + ' กรัม';
+                    document.getElementById('totalValue').textContent = 'มูลค่า: ฿' + formatCurrency(totalValue);
+                    document.getElementById('barGold').textContent = formatNumber(currentGoldData.balances.bar?.totalGold || 0) + ' กรัม';
+                    document.getElementById('ornamentGold').textContent = formatNumber(currentGoldData.balances.ornament?.totalGold || 0) + ' กรัม';
+                }
+            } catch (error) {
+                console.error('Error loading gold data:', error);
+            }
+        }
+
+        // Load Wallet Data
+        async function loadWalletData() {
+            try {
+                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const data = await response.json();
+                if (data.success) {
+                    walletData.balance = data.balance || 0;
+                    walletData.transactions = data.transactions || [];
+                    document.getElementById('walletBalance').textContent = '฿' + formatCurrency(walletData.balance);
+
+                    const walletHistory = document.getElementById('walletHistory');
+                    walletHistory.innerHTML = '';
+
+                    if (walletData.transactions.length === 0) {
+                        walletHistory.innerHTML = '<p class="text-gray-500 text-center">ยังไม่มีรายการ</p>';
+                        return;
+                    }
+
+                    walletData.transactions.forEach(transaction => {
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                        const typeColor = transaction.type === 'เติมเงิน' ? 'text-green-600' : 'text-red-600';
+                        const typeIcon = transaction.type === 'เติมเงิน' ? 'fa-plus-circle' : 'fa-minus-circle';
+                        const statusColor = transaction.status === 'สำเร็จ' ? 'text-green-500' :
+                                           transaction.status === 'รอดำเนินการ' ? 'text-yellow-500' : 'text-red-500';
+                        div.innerHTML = `
+                            <div>
+                                <p class="font-semibold ${typeColor}">
+                                    <i class="fas ${typeIcon} mr-1"></i>
+                                    ${transaction.type}
+                                </p>
+                                <p class="text-sm text-gray-500">${transaction.date}</p>
+                                <p class="text-xs ${statusColor}">${transaction.status}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold">฿${formatCurrency(transaction.amount)}</p>
+                                <p class="text-sm text-gray-500">${transaction.bank || ''}</p>
+                            </div>
+                        `;
+                        walletHistory.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading wallet data:', error);
+            }
+        }
+
+        // Load Transactions
+        async function loadTransactions() {
+            try {
+                const response = await fetch(`${API_URL}?action=getTransactions&userId=${userData.userId}`);
+                const data = await response.json();
+                if (data.success) {
+                    const transactionList = document.getElementById('transactionList');
+                    transactionList.innerHTML = '';
+                    if (data.transactions.length === 0) {
+                        transactionList.innerHTML = '<p class="text-gray-500 text-center">ยังไม่มีรายการ</p>';
+                        return;
+                    }
+                    data.transactions.forEach(transaction => {
+                        const div = document.createElement('div');
+                        div.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                        const typeColor = transaction.type === 'ซื้อ' ? 'text-green-600' : 'text-red-600';
+                        const typeIcon = transaction.type === 'ซื้อ' ? 'fa-plus' : 'fa-minus';
+                        const goldTypeText = transaction.goldType === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+                        div.innerHTML = `
+                            <div>
+                                <p class="font-semibold ${typeColor}">
+                                    <i class="fas ${typeIcon} mr-1"></i>
+                                    ${transaction.type} ${formatNumber(transaction.amount)} กรัม (${goldTypeText})
+                                </p>
+                                <p class="text-sm text-gray-500">${transaction.date}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold">฿${formatCurrency(transaction.price)}/บาท</p>
+                                <p class="text-sm text-gray-500">฿${formatCurrency(transaction.total)}</p>
+                            </div>
+                        `;
+                        transactionList.appendChild(div);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+    </script>
+</body>
+</html>
