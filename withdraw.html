@@ -81,6 +81,7 @@
         <h1 class="page-title">ถอนเงิน</h1>
         <div class="w-10"></div>
     </div>
+
     <!-- Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
@@ -89,6 +90,7 @@
             <div class="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mt-4"></div>
         </div>
     </div>
+
     <!-- Main Content -->
     <div id="app" class="hidden page-container p-4 fade-in">
         <div class="max-w-md mx-auto">
@@ -103,6 +105,7 @@
                     <p class="text-xs text-gray-500">จำนวนเงินที่สามารถถอนได้</p>
                 </div>
             </div>
+
             <!-- Withdraw Form -->
             <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
                 <h2 class="text-xl font-bold mb-6 text-center text-gray-800">
@@ -116,9 +119,10 @@
                             <i class="fas fa-bolt mr-1 text-orange-500"></i>จำนวนด่วน
                         </label>
                         <div class="grid grid-cols-3 gap-2" id="quickAmountButtons">
-                            <!-- จะถูกสร้างด้วย JavaScript -->
+                            <!-- Buttons will be created with JavaScript -->
                         </div>
                     </div>
+
                     <!-- Amount Input -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -129,6 +133,7 @@
                         <div id="amountError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">จำนวนเงินขั้นต่ำ 100 บาท</p>
                     </div>
+
                     <!-- Bank Selection -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -152,6 +157,7 @@
                         </select>
                         <div id="bankError" class="text-xs text-red-500 mt-1 hidden"></div>
                     </div>
+
                     <!-- Account Number -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -163,6 +169,7 @@
                         <div id="accountError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">กรอกเลขที่บัญชีของคุณ (ไม่ต้องมีขีด)</p>
                     </div>
+
                     <!-- Account Name -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -173,6 +180,7 @@
                         <div id="nameError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">ชื่อต้องตรงกับเจ้าของบัญชีธนาคาร</p>
                     </div>
+
                     <!-- Processing Fee Info -->
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
                         <h4 class="font-semibold text-blue-800 mb-3 flex items-center">
@@ -197,6 +205,7 @@
                             </div>
                         </div>
                     </div>
+
                     <!-- Terms and Conditions -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <label class="flex items-start space-x-3 cursor-pointer">
@@ -210,6 +219,7 @@
                         <div id="termsError" class="text-xs text-red-500 mt-2 hidden"></div>
                     </div>
                 </div>
+
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-8">
                     <button id="submitWithdrawBtn" onclick="submitWithdraw()"
@@ -225,12 +235,11 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
         // Global Variables
         let userData = {};
         let walletData = { balance: 0 };
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwS4EwiW66bx8AKD7bt40vcFbZK7xpCod46EeomxBGGfFF_2YARo0xASMSmbPBVnKY0/exec'; // Replace with your actual deployment URL
 
         // Show terms modal
         function showTerms() {
@@ -273,7 +282,7 @@
         // Create quick amount buttons
         function createQuickAmountButtons() {
             const container = document.getElementById('quickAmountButtons');
-            container.innerHTML = ''; // Clear existing buttons
+            container.innerHTML = '';
 
             const amounts = [500, 1000, 2000, 3000, 5000];
 
@@ -292,7 +301,6 @@
                 }
             });
 
-            // Add "ทั้งหมด" button if balance >= 100
             if (walletData.balance >= 100) {
                 const allButton = document.createElement('button');
                 allButton.type = 'button';
@@ -528,7 +536,7 @@
                         accountName: accountName
                     };
 
-                    console.log('Sending payload:', payload); // Debug log
+                    console.log('Sending payload:', payload);
 
                     // Submit to Google Apps Script
                     const response = await fetch(API_URL, {
@@ -540,7 +548,7 @@
                     });
 
                     const data = await response.json();
-                    console.log('Response from server:', data); // Debug log
+                    console.log('Response from server:', data);
 
                     if (data.success) {
                         await Swal.fire({
@@ -623,13 +631,12 @@
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
                 const data = await response.json();
 
-                console.log('Wallet data:', data); // Debug log
+                console.log('Wallet data:', data);
 
                 if (data.success) {
                     walletData.balance = data.balance || 0;
                     document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
 
-                    // Create quick amount buttons after loading balance
                     createQuickAmountButtons();
                     updateButtonState();
                 } else {
@@ -649,10 +656,19 @@
         // Initialize LIFF
         window.onload = async function() {
             try {
-                console.log('Initializing LIFF with ID:', LIFF_ID); // Debug log
-                await liff.init({ liffId: LIFF_ID });
+                await liff.init({ liffId: 'YOUR_LIFF_ID' }); // Replace with your LIFF ID
                 if (liff.isLoggedIn()) {
-                    initApp();
+                    const profile = await liff.getProfile();
+                    userData = {
+                        userId: profile.userId,
+                        displayName: profile.displayName,
+                        pictureUrl: profile.pictureUrl
+                    };
+                    console.log('User data:', userData);
+                    await loadWalletData();
+                    setupEventListeners();
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
                 } else {
                     liff.login();
                 }
@@ -667,65 +683,6 @@
             }
         };
 
-        // Initialize App
-        async function initApp() {
-            try {
-                const profile = await liff.getProfile();
-                userData = {
-                    userId: profile.userId,
-                    displayName: profile.displayName,
-                    pictureUrl: profile.pictureUrl
-                };
-                console.log('User data:', userData); // Debug log
-                await loadWalletData();
-
-                // Check if user has sufficient balance
-                if (walletData.balance < 100) {
-                    await Swal.fire({
-                        icon: 'warning',
-                        title: '💰 ยอดเงินไม่เพียงพอ',
-                        html: `
-                            <div class="text-center space-y-4">
-                                <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                    <p class="text-yellow-800 mb-2">ยอดเงินปัจจุบัน: <span class="font-bold">฿${formatCurrency(walletData.balance)}</span></p>
-                                    <p class="text-yellow-700 text-sm">ยอดเงินขั้นต่ำสำหรับการถอน: <span class="font-semibold">฿100.00</span></p>
-                                </div>
-                                <p class="text-gray-600">คุณต้องมียอดเงินในกระเป๋าอย่างน้อย 100 บาท เพื่อทำการถอนเงิน</p>
-                            </div>
-                        `,
-                        confirmButtonText: '💎 ไปเติมเงิน',
-                        showCancelButton: true,
-                        cancelButtonText: '🏠 กลับหน้าหลัก',
-                        confirmButtonColor: '#f59e0b',
-                        cancelButtonColor: '#6b7280'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = 'topup.html';
-                        } else {
-                            window.location.href = 'index.html';
-                        }
-                    });
-                    return;
-                }
-
-                // Set up event listeners
-                setupEventListeners();
-
-                // Show app
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-
-            } catch (error) {
-                console.error('Error initializing app:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    text: 'ไม่สามารถเริ่มต้นแอปได้',
-                    confirmButtonColor: '#ef4444'
-                });
-            }
-        }
-
         // Setup event listeners
         function setupEventListeners() {
             const amountInput = document.getElementById('withdrawAmount');
@@ -734,45 +691,35 @@
             const nameInput = document.getElementById('withdrawAccountName');
             const termsCheckbox = document.getElementById('acceptTerms');
 
-            // Amount input validation
             amountInput.addEventListener('input', function() {
                 validateAmount();
                 updateButtonState();
             });
 
             amountInput.addEventListener('blur', validateAmount);
-
-            // Bank selection validation
             bankSelect.addEventListener('change', function() {
                 validateBank();
                 updateButtonState();
             });
 
-            // Account number validation (only numbers)
             accountInput.addEventListener('input', function() {
-                // Remove any non-numeric characters
                 this.value = this.value.replace(/[^0-9]/g, '');
                 validateAccount();
                 updateButtonState();
             });
 
             accountInput.addEventListener('blur', validateAccount);
-
-            // Account name validation
             nameInput.addEventListener('input', function() {
                 validateAccountName();
                 updateButtonState();
             });
 
             nameInput.addEventListener('blur', validateAccountName);
-
-            // Terms checkbox validation
             termsCheckbox.addEventListener('change', function() {
                 validateTerms();
                 updateButtonState();
             });
 
-            // Initial validation
             updateButtonState();
         }
 
