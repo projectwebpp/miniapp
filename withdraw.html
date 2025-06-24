@@ -38,6 +38,38 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        .mobile-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+        }
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -47,7 +79,7 @@
             <i class="fas fa-arrow-left"></i>
         </button>
         <h1 class="page-title">ถอนเงิน</h1>
-        <div class="w-10"></div> <!-- Spacer for center alignment -->
+        <div class="w-10"></div>
     </div>
 
     <!-- Loading Screen -->
@@ -210,28 +242,6 @@
         let userData = {};
         let walletData = { balance: 0 };
 
-        // Utility Functions
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount);
-        }
-
-        function formatAccountNumber(accountNumber) {
-            if (accountNumber.length === 10) {
-                return accountNumber.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/g, '$1-$2-$3-$4');
-            } else if (accountNumber.length === 12) {
-                return accountNumber.replace(/(\d{3})(\d{2})(\d{5})(\d{2})/g, '$1-$2-$3-$4');
-            }
-            return accountNumber;
-        }
-
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
-
         // Show terms modal
         function showTerms() {
             Swal.fire({
@@ -259,7 +269,7 @@
                             <ul class="space-y-1 text-green-700">
                                 <li>• สามารถยกเลิกได้ก่อนการอนุมัติ</li>
                                 <li>• หลังอนุมัติแล้วไม่สามารถยกเลิกได้</li>
-                                <li>• กรณี Hareketplace
+                                <li>• กรณีมีปัญหาติดต่อฝ่ายลูกค้าสัมพันธ์</li>
                             </ul>
                         </div>
                     </div>
@@ -273,6 +283,8 @@
         // Create quick amount buttons
         function createQuickAmountButtons() {
             const container = document.getElementById('quickAmountButtons');
+            container.innerHTML = ''; // Clear existing buttons
+            
             const amounts = [500, 1000, 2000, 3000, 5000];
             
             amounts.forEach(amount => {
@@ -514,17 +526,6 @@
 
             if (result.isConfirmed) {
                 try {
-                    // Create payload for withdraw request
-                    const payload = {
-                        action: 'handleWithdraw',
-                        userId: userData.userId,
-                        userName: userData.displayName,
-                        amount: amount,
-                        bank: bank,
-                        account: accountNumber,
-                        accountName: accountName
-                    };
-
                     // Show loading
                     Swal.fire({
                         title: 'กำลังดำเนินการ...',
@@ -539,6 +540,18 @@
                         showConfirmButton: false
                     });
 
+                    // Create payload for withdraw request - แก้ไข action name
+                    const payload = {
+                        action: 'withdraw', // เปลี่ยนจาก 'handleWithdraw' เป็น 'withdraw' ตาม GS
+                        userId: userData.userId,
+                        amount: amount,
+                        bank: bank,
+                        account: accountNumber,
+                        accountName: accountName
+                    };
+
+                    console.log('Sending payload:', payload); // Debug log
+
                     // Submit to Google Apps Script
                     const response = await fetch(API_URL, {
                         method: 'POST',
@@ -549,6 +562,7 @@
                     });
 
                     const data = await response.json();
+                    console.log('Response from server:', data); // Debug log
 
                     if (data.success) {
                         await Swal.fire({
@@ -608,7 +622,17 @@
                     Swal.fire({
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาด',
-                        text: error.message || 'ไม่สามารถส่งคำขอถอนเงินได้ กรุณาลองใหม่อีกครั้ง',
+                        html: `
+                            <div class="text-center space-y-3">
+                                <p class="text-gray-600">${error.message || 'ไม่สามารถส่งคำขอถอนเงินได้'}</p>
+                                <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                    <p class="text-sm text-yellow-800">
+                                        <i class="fas fa-lightbulb mr-1"></i>
+                                        กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง
+                                    </p>
+                                </div>
+                            </div>
+                        `,
                         confirmButtonColor: '#ef4444'
                     });
                 }
@@ -620,6 +644,8 @@
             try {
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
                 const data = await response.json();
+                
+                console.log('Wallet data:', data); // Debug log
                 
                 if (data.success) {
                     walletData.balance = data.balance || 0;
@@ -645,6 +671,7 @@
         // Initialize LIFF
         window.onload = async function() {
             try {
+                console.log('Initializing LIFF with ID:', LIFF_ID); // Debug log
                 await liff.init({ liffId: LIFF_ID });
                 if (liff.isLoggedIn()) {
                     initApp();
@@ -671,6 +698,8 @@
                     displayName: profile.displayName,
                     pictureUrl: profile.pictureUrl
                 };
+
+                console.log('User data:', userData); // Debug log
 
                 await loadWalletData();
 
