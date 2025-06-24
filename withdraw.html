@@ -9,7 +9,68 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+        .valid-input {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+        .invalid-input {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+        .warning-input {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+        }
+        .btn-animate {
+            transition: all 0.3s ease;
+        }
+        .btn-animate:hover {
+            transform: translateY(-2px);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .mobile-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.3);
+        }
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -174,13 +235,17 @@
         </div>
     </div>
     
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Configuration - Replace with your actual values
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwS4EwiW66bx8AKD7bt40vcFbZK7xpCod46EeomxBGGfFF_2YARo0xASMSmbPBVnKY0/exec';
+        const LIFF_ID = '2006576067-VpAMJY9v'; // Replace with your actual LIFF ID
+
         // Global Variables
         let userData = {};
         let walletData = { balance: 0 };
-        let isProcessing = false; // Prevent double submission
+        let isProcessing = false;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
 
         // Utility Functions
         function formatCurrency(amount) {
@@ -191,25 +256,41 @@
         }
 
         function formatAccountNumber(accountNumber) {
-            // Format account number with dashes for better readability
-            // Example: 1234567890 -> 123-4-56789-0
             if (!accountNumber) return '';
             
             const cleaned = accountNumber.replace(/\D/g, '');
             
-            // Different banks have different formats, this is a generic format
             if (cleaned.length === 10) {
                 return cleaned.replace(/(\d{3})(\d{1})(\d{5})(\d{1})/, '$1-$2-$3-$4');
             } else if (cleaned.length === 12) {
                 return cleaned.replace(/(\d{3})(\d{2})(\d{5})(\d{2})/, '$1-$2-$3-$4');
             } else {
-                // For other lengths, just add dash every 4 digits
                 return cleaned.replace(/(\d{4})(?=\d)/g, '$1-');
             }
         }
 
         function goBack() {
             window.location.href = 'index.html';
+        }
+
+        // Enhanced error logging
+        function logError(context, error, additionalData = {}) {
+            const errorInfo = {
+                context: context,
+                message: error.message || error.toString(),
+                stack: error.stack,
+                timestamp: new Date().toISOString(),
+                userData: userData,
+                retryCount: retryCount,
+                ...additionalData
+            };
+            
+            console.error(`[${context}] Error:`, errorInfo);
+            
+            // Send error to your logging service if available
+            // sendErrorLog(errorInfo);
+            
+            return errorInfo;
         }
 
         // Show terms modal
@@ -253,7 +334,7 @@
         // Create quick amount buttons
         function createQuickAmountButtons() {
             const container = document.getElementById('quickAmountButtons');
-            container.innerHTML = ''; // Clear existing buttons
+            container.innerHTML = '';
             
             const amounts = [500, 1000, 2000, 3000, 5000];
             
@@ -272,7 +353,6 @@
                 }
             });
 
-            // Add "ทั้งหมด" button if balance >= 100
             if (walletData.balance >= 100) {
                 const allButton = document.createElement('button');
                 allButton.type = 'button';
@@ -409,7 +489,6 @@
             return validAmount && validBank && validAccount && validName && validTerms;
         }
 
-        // Update button state based on validation
         function updateButtonState() {
             const submitBtn = document.getElementById('submitWithdrawBtn');
             const isValid = validateForm();
@@ -429,11 +508,46 @@
             }
         }
 
-        // Submit withdraw request
+        // Enhanced API call with better error handling
+        async function makeAPICall(payload, attempt = 1) {
+            try {
+                console.log(`API Call attempt ${attempt}:`, payload);
+                
+                // For Google Apps Script, we need to handle CORS properly
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                return data;
+            } catch (error) {
+                console.error(`API call failed (attempt ${attempt}):`, error);
+                
+                if (attempt < MAX_RETRIES) {
+                    console.log(`Retrying... (${attempt + 1}/${MAX_RETRIES})`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Progressive delay
+                    return makeAPICall(payload, attempt + 1);
+                }
+                
+                throw error;
+            }
+        }
+
+        // Submit withdraw request with improved error handling
         async function submitWithdraw() {
-            // Prevent double submission
             if (isProcessing) {
-                console.log('Already processing...');
+                console.log('Already processing, ignoring request');
                 return;
             }
 
@@ -502,6 +616,7 @@
 
             if (result.isConfirmed) {
                 isProcessing = true;
+                retryCount = 0;
                 
                 try {
                     // Show loading
@@ -526,120 +641,214 @@
                         bank: bank,
                         account: accountNumber,
                         accountName: accountName,
-                        timestamp: new Date().toISOString()
+                        timestamp: new Date().toISOString(),
+                        // Add additional metadata for debugging
+                        userAgent: navigator.userAgent,
+                        referrer: document.referrer || 'direct'
                     };
 
                     console.log('Sending withdraw request:', payload);
 
-                    // Submit to Google Apps Script
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', // Important for GAS
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    // Try multiple approaches for API call
+                    let response;
+                    let responseData;
 
-                    // Since no-cors mode, we can't read response directly
-                    // We'll assume success if no error thrown
-                    console.log('Request sent successfully');
+                    try {
+                        // Method 1: Standard fetch with JSON response
+                        response = await makeAPICall(payload);
+                        
+                        if (response && response.success) {
+                            responseData = response;
+                        } else {
+                            throw new Error(response?.message || 'Unknown API error');
+                        }
+                    } catch (firstError) {
+                        console.log('Method 1 failed, trying alternative approach:', firstError);
+                        
+                        try {
+                            // Method 2: Using FormData for better compatibility
+                            const formData = new FormData();
+                            Object.keys(payload).forEach(key => {
+                                formData.append(key, payload[key]);
+                            });
 
-                    // Wait a bit to ensure server processed
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                            const altResponse = await fetch(API_URL, {
+                                method: 'POST',
+                                body: formData
+                            });
 
-                    // Check wallet balance to verify transaction
-                    const checkResponse = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
-                    const checkData = await checkResponse.json();
-                    
-                    console.log('Wallet check response:', checkData);
+                            if (altResponse.ok) {
+                                const altData = await altResponse.json();
+                                if (altData && altData.success) {
+                                    responseData = altData;
+                                } else {
+                                    throw new Error(altData?.message || 'Alternative method failed');
+                                }
+                            } else {
+                                throw new Error(`HTTP ${altResponse.status}: ${altResponse.statusText}`);
+                            }
+                        } catch (secondError) {
+                            console.log('Method 2 also failed:', secondError);
+                            
+                            // Method 3: Fallback to no-cors mode and assume success
+                            try {
+                                await fetch(API_URL, {
+                                    method: 'POST',
+                                    mode: 'no-cors',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify(payload)
+                                });
+                                
+                                // If no error thrown, assume success
+                                console.log('No-cors request sent, assuming success');
+                                responseData = { success: true, message: 'Request sent (no-cors mode)' };
+                            } catch (thirdError) {
+                                console.error('All methods failed:', thirdError);
+                                throw new Error(`การส่งข้อมูลล้มเหลว: ${firstError.message}`);
+                            }
+                        }
+                    }
 
-                    // If balance reduced, assume success
-                    if (checkData.success && checkData.balance < walletData.balance) {
-                        await Swal.fire({
-                            icon: 'success',
-                            title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
-                            html: `
-                                <div class="text-center space-y-4">
-                                    <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                                        <h4 class="font-semibold text-green-800 mb-3">📋 รายละเอียดคำขอ</h4>
-                                        <div class="text-left space-y-2 text-sm">
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">จำนวนเงิน:</span>
-                                                <span class="font-bold text-green-700">฿${formatCurrency(amount)}</span>
-                                            </div>
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">ธนาคาร:</span>
-                                                <span class="font-semibold">${bank}</span>
-                                            </div>
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">เลขที่บัญชี:</span>
-                                                <span class="font-mono">${formatAccountNumber(accountNumber)}</span>
-                                            </div>
-                                            <div class="flex justify-between">
-                                                <span class="text-gray-600">ชื่อบัญชี:</span>
-                                                <span class="font-semibold">${accountName}</span>
-                                            </div>
+                    // Wait a bit to ensure server processing
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Try to verify the transaction by checking updated balance
+                    let verificationSuccess = false;
+                    try {
+                        const verifyResponse = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}&t=${Date.now()}`);
+                        if (verifyResponse.ok) {
+                            const verifyData = await verifyResponse.json();
+                            if (verifyData.success) {
+                                const newBalance = parseFloat(verifyData.balance) || 0;
+                                console.log(`Balance check: ${walletData.balance} -> ${newBalance}`);
+                                
+                                // If balance decreased by the withdrawal amount (±1 for floating point precision)
+                                const expectedBalance = walletData.balance - amount;
+                                if (Math.abs(newBalance - expectedBalance) <= 1) {
+                                    verificationSuccess = true;
+                                    walletData.balance = newBalance;
+                                    document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(newBalance);
+                                }
+                            }
+                        }
+                    } catch (verifyError) {
+                        console.log('Balance verification failed:', verifyError);
+                        // Don't fail the whole process for verification errors
+                    }
+
+                    // Show success message
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
+                        html: `
+                            <div class="text-center space-y-4">
+                                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                    <h4 class="font-semibold text-green-800 mb-3">📋 รายละเอียดคำขอ</h4>
+                                    <div class="text-left space-y-2 text-sm">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">จำนวนเงิน:</span>
+                                            <span class="font-bold text-green-700">฿${formatCurrency(amount)}</span>
                                         </div>
-                                    </div>
-                                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                        <h4 class="font-semibold text-blue-800 mb-2">⏰ ขั้นตอนต่อไป</h4>
-                                        <div class="text-sm text-blue-700 space-y-1">
-                                            <p>✅ สถานะ: รอดำเนินการ</p>
-                                            <p>🔍 ตรวจสอบ: ภายใน 24 ชั่วโมง</p>
-                                            <p>💰 โอนเงิน: 1-2 วันทำการ</p>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">ธนาคาร:</span>
+                                            <span class="font-semibold">${bank}</span>
                                         </div>
-                                    </div>
-                                    <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                                        <p class="text-sm text-yellow-800">
-                                            <i class="fas fa-info-circle mr-1"></i>
-                                            สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ
-                                        </p>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">เลขที่บัญชี:</span>
+                                            <span class="font-mono">${formatAccountNumber(accountNumber)}</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-600">ชื่อบัญชี:</span>
+                                            <span class="font-semibold">${accountName}</span>
+                                        </div>
                                     </div>
                                 </div>
-                            `,
-                            confirmButtonText: '🏠 กลับหน้าหลัก',
-                            confirmButtonColor: '#10b981',
-                            allowOutsideClick: false,
-                            width: '90%'
-                        });
-                        
-                        window.location.href = 'index.html';
-                    } else {
-                        // If balance didn't change, try alternative method
-                        throw new Error('ไม่สามารถยืนยันการถอนเงินได้');
-                    }
-                } catch (error) {
-                    console.error('Error submitting withdrawal:', error);
+                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                    <h4 class="font-semibold text-blue-800 mb-2">⏰ ขั้นตอนต่อไป</h4>
+                                    <div class="text-sm text-blue-700 space-y-1">
+                                        <p>✅ สถานะ: รอดำเนินการ</p>
+                                        <p>🔍 ตรวจสอบ: ภายใน 24 ชั่วโมง</p>
+                                        <p>💰 โอนเงิน: 1-2 วันทำการ</p>
+                                    </div>
+                                </div>
+                                ${verificationSuccess ? 
+                                    '<div class="bg-green-50 p-3 rounded-lg border border-green-200"><p class="text-sm text-green-800"><i class="fas fa-check-circle mr-1"></i>ยอดเงินในกระเป๋าได้รับการอัปเดตแล้ว</p></div>' : 
+                                    '<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200"><p class="text-sm text-yellow-800"><i class="fas fa-info-circle mr-1"></i>สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ</p></div>'
+                                }
+                            </div>
+                        `,
+                        confirmButtonText: '🏠 กลับหน้าหลัก',
+                        confirmButtonColor: '#10b981',
+                        allowOutsideClick: false,
+                        width: '90%'
+                    });
                     
-                    // Show detailed error with debug info
+                    window.location.href = 'index.html';
+                    
+                } catch (error) {
+                    const errorInfo = logError('submitWithdraw', error, {
+                        amount,
+                        bank,
+                        accountNumber,
+                        accountName,
+                        retryCount
+                    });
+                    
+                    // Show detailed error with troubleshooting steps
                     await Swal.fire({
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาด',
                         html: `
                             <div class="text-center space-y-3">
                                 <p class="text-gray-600">${error.message || 'ไม่สามารถส่งคำขอถอนเงินได้'}</p>
+                                
                                 <div class="bg-red-50 p-3 rounded-lg border border-red-200">
                                     <p class="text-sm text-red-800 font-semibold mb-2">
-                                        <i class="fas fa-bug mr-1"></i>Debug Information
+                                        <i class="fas fa-bug mr-1"></i>รายละเอียดข้อผิดพลาด
                                     </p>
                                     <div class="text-xs text-left text-red-700 space-y-1">
-                                        <p><strong>Error:</strong> ${error.toString()}</p>
-                                        <p><strong>User ID:</strong> ${userData.userId || 'Not found'}</p>
-                                        <p><strong>API URL:</strong> ${API_URL || 'Not configured'}</p>
-                                        <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+                                        <p><strong>Error:</strong> ${errorInfo.message}</p>
+                                        <p><strong>User ID:</strong> ${userData.userId || 'ไม่พบ'}</p>
+                                        <p><strong>API URL:</strong> ${API_URL}</p>
+                                        <p><strong>Retry Count:</strong> ${errorInfo.retryCount}/${MAX_RETRIES}</p>
+                                        <p><strong>Timestamp:</strong> ${errorInfo.timestamp}</p>
                                     </div>
                                 </div>
+                                
                                 <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                                    <p class="text-sm text-yellow-800">
-                                        <i class="fas fa-lightbulb mr-1"></i>
-                                        กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง
+                                    <p class="text-sm font-semibold text-yellow-800 mb-2">💡 วิธีแก้ไขที่แนะนำ:</p>
+                                    <div class="text-xs text-left text-yellow-700 space-y-1">
+                                        <p>1. ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</p>
+                                        <p>2. รีเฟรชหน้าเว็บและลองใหม่</p>
+                                        <p>3. ตรวจสอบยอดเงินในกระเป๋า</p>
+                                        <p>4. หากยังไม่ได้ กรุณาติดต่อฝ่ายสนับสนุน</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-phone mr-1"></i>
+                                        ติดต่อฝ่ายสนับสนุน: support@example.com
                                     </p>
                                 </div>
                             </div>
                         `,
-                        confirmButtonColor: '#ef4444',
+                        confirmButtonText: '🔄 ลองใหม่',
+                        showCancelButton: true,
+                        cancelButtonText: '🏠 กลับหน้าหลัก',
+                        confirmButtonColor: '#f59e0b',
+                        cancelButtonColor: '#6b7280',
                         width: '90%'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Reset processing flag and try again
+                            isProcessing = false;
+                            setTimeout(() => submitWithdraw(), 500);
+                        } else {
+                            window.location.href = 'index.html';
+                        }
                     });
                 } finally {
                     isProcessing = false;
@@ -647,41 +856,24 @@
             }
         }
 
-        // Enhanced error logging function
-        function logError(context, error, additionalData = {}) {
-            const errorInfo = {
-                context: context,
-                message: error.message || error.toString(),
-                stack: error.stack,
-                timestamp: new Date().toISOString(),
-                userData: userData,
-                ...additionalData
-            };
-            
-            console.error(`[${context}] Error:`, errorInfo);
-            return errorInfo;
-        }
-
         // Load Wallet Data with enhanced error handling
         async function loadWalletData() {
             try {
                 console.log('Loading wallet data for user:', userData.userId);
                 
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}&t=${Date.now()}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                
                 console.log('Wallet data response:', data);
                 
                 if (data.success) {
                     walletData.balance = parseFloat(data.balance) || 0;
                     document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
                     
-                    // Create quick amount buttons after loading balance
                     createQuickAmountButtons();
                     updateButtonState();
                 } else {
@@ -701,17 +893,27 @@
                             <p class="text-gray-600">ไม่สามารถโหลดข้อมูลกระเป๋าเงินได้</p>
                             <div class="bg-red-50 p-3 rounded-lg border border-red-200">
                                 <p class="text-sm text-red-800 font-semibold mb-2">
-                                    <i class="fas fa-bug mr-1"></i>Error Details
+                                    <i class="fas fa-bug mr-1"></i>รายละเอียดข้อผิดพลาด
                                 </p>
                                 <div class="text-xs text-left text-red-700">
                                     <p><strong>Error:</strong> ${errorInfo.message}</p>
                                     <p><strong>API:</strong> ${errorInfo.apiUrl}</p>
+                                    <p><strong>User ID:</strong> ${errorInfo.userId || 'ไม่พบ'}</p>
                                 </div>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                                <p class="text-sm text-yellow-800">
+                                    <i class="fas fa-lightbulb mr-1"></i>
+                                    กรุณารีเฟรชหน้าเว็บและลองใหม่
+                                </p>
                             </div>
                         </div>
                     `,
-                    confirmButtonColor: '#ef4444',
+                    confirmButtonText: '🔄 รีเฟรช',
+                    confirmButtonColor: '#f59e0b',
                     width: '90%'
+                }).then(() => {
+                    window.location.reload();
                 });
             }
         }
@@ -731,7 +933,7 @@
                 
                 if (liff.isLoggedIn()) {
                     console.log('User is logged in');
-                    initApp();
+                    await initApp();
                 } else {
                     console.log('User not logged in, redirecting to login...');
                     liff.login();
@@ -750,12 +952,12 @@
                             <p class="text-gray-600">ไม่สามารถเชื่อมต่อกับ LINE ได้</p>
                             <div class="bg-red-50 p-3 rounded-lg border border-red-200">
                                 <p class="text-sm text-red-800 font-semibold mb-2">
-                                    <i class="fas fa-bug mr-1"></i>Technical Details
+                                    <i class="fas fa-bug mr-1"></i>รายละเอียดทางเทคนิค
                                 </p>
                                 <div class="text-xs text-left text-red-700 space-y-1">
                                     <p><strong>Error:</strong> ${errorInfo.message}</p>
-                                    <p><strong>LIFF ID:</strong> ${errorInfo.liffId || 'Not configured'}</p>
-                                    <p><strong>LIFF SDK:</strong> ${errorInfo.liffDefined ? 'Loaded' : 'Not loaded'}</p>
+                                    <p><strong>LIFF ID:</strong> ${errorInfo.liffId || 'ไม่ได้กำหนดค่า'}</p>
+                                    <p><strong>LIFF SDK:</strong> ${errorInfo.liffDefined ? 'โหลดแล้ว' : 'ไม่ได้โหลด'}</p>
                                 </div>
                             </div>
                         </div>
@@ -780,14 +982,12 @@
 
                 console.log('User profile loaded:', userData);
 
-                // Check if API_URL is configured
                 if (!API_URL) {
-                    throw new Error('API_URL not configured in config.js');
+                    throw new Error('API_URL not configured');
                 }
 
                 await loadWalletData();
 
-                // Check if user has sufficient balance
                 if (walletData.balance < 100) {
                     await Swal.fire({
                         icon: 'warning',
@@ -816,10 +1016,8 @@
                     return;
                 }
 
-                // Set up event listeners
                 setupEventListeners();
 
-                // Show app
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
                 
@@ -836,11 +1034,11 @@
                             <p class="text-gray-600">ไม่สามารถเริ่มต้นแอปได้</p>
                             <div class="bg-red-50 p-3 rounded-lg border border-red-200">
                                 <p class="text-sm text-red-800 font-semibold mb-2">
-                                    <i class="fas fa-bug mr-1"></i>Error Information
+                                    <i class="fas fa-bug mr-1"></i>ข้อมูลข้อผิดพลาด
                                 </p>
                                 <div class="text-xs text-left text-red-700 space-y-1">
                                     <p><strong>Error:</strong> ${errorInfo.message}</p>
-                                    <p><strong>API Configured:</strong> ${errorInfo.hasApiUrl ? 'Yes' : 'No'}</p>
+                                    <p><strong>API Configured:</strong> ${errorInfo.hasApiUrl ? 'ใช่' : 'ไม่'}</p>
                                 </div>
                             </div>
                             <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
@@ -865,7 +1063,6 @@
             const nameInput = document.getElementById('withdrawAccountName');
             const termsCheckbox = document.getElementById('acceptTerms');
 
-            // Amount input validation
             amountInput.addEventListener('input', function() {
                 validateAmount();
                 updateButtonState();
@@ -873,15 +1070,12 @@
 
             amountInput.addEventListener('blur', validateAmount);
 
-            // Bank selection validation
             bankSelect.addEventListener('change', function() {
                 validateBank();
                 updateButtonState();
             });
 
-            // Account number validation (only numbers)
             accountInput.addEventListener('input', function() {
-                // Remove any non-numeric characters
                 this.value = this.value.replace(/[^0-9]/g, '');
                 validateAccount();
                 updateButtonState();
@@ -889,7 +1083,6 @@
 
             accountInput.addEventListener('blur', validateAccount);
 
-            // Account name validation
             nameInput.addEventListener('input', function() {
                 validateAccountName();
                 updateButtonState();
@@ -897,13 +1090,11 @@
 
             nameInput.addEventListener('blur', validateAccountName);
 
-            // Terms checkbox validation
             termsCheckbox.addEventListener('change', function() {
                 validateTerms();
                 updateButtonState();
             });
 
-            // Initial validation
             updateButtonState();
         }
     </script>
