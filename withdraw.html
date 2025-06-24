@@ -235,18 +235,15 @@
         </div>
     </div>
     
-   <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Configuration - แก้ไขตาม environment ของคุณ
+        const LIFF_ID = 'YOUR_LIFF_ID'; // ใส่ LIFF ID ของคุณ
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwS4EwiW66bx8AKD7bt40vcFbZK7xpCod46EeomxBGGfFF_2YARo0xASMSmbPBVnKY0/exec'; // ใส่ API URL ของคุณ
+        
         // Global Variables
         let userData = {};
-        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
-        let walletData = { balance: 0, transactions: [] };
-
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
+        let walletData = { balance: 0 };
+        let isProcessing = false; // Prevent double submission
 
         // Utility Functions
         function formatCurrency(amount) {
