@@ -235,19 +235,31 @@
         </div>
     </div>
     
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Configuration - Replace with your actual values
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwS4EwiW66bx8AKD7bt40vcFbZK7xpCod46EeomxBGGfFF_2YARo0xASMSmbPBVnKY0/exec';
+        const LIFF_ID = '2006576067-VpAMJY9v'; // Replace with your actual LIFF ID
+
         // Global Variables
         let userData = {};
-        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
-        let walletData = { balance: 0, transactions: [] };
+        let walletData = { balance: 0 };
+        let isProcessing = false;
+        let retryCount = 0;
+        const MAX_RETRIES = 3;
 
-        // Go back function
-        function goBack() {
-            window.history.back();
+        // Add processing state management
+        function setProcessing(state) {
+            isProcessing = state;
+            const submitBtn = document.getElementById('submitWithdrawBtn');
+            
+            if (state) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังดำเนินการ...';
+                submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
+            } else {
+                updateButtonState(); // Reset to normal state
+            }
         }
-
 
         // Utility Functions
         function formatCurrency(amount) {
@@ -293,6 +305,20 @@
             // sendErrorLog(errorInfo);
             
             return errorInfo;
+        }
+
+        // Add processing state management
+        function setProcessing(state) {
+            isProcessing = state;
+            const submitBtn = document.getElementById('submitWithdrawBtn');
+            
+            if (state) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>กำลังดำเนินการ...';
+                submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
+            } else {
+                updateButtonState(); // Reset to normal state
+            }
         }
 
         // Show terms modal
@@ -597,6 +623,7 @@
 
         // Submit withdraw request with improved error handling
         async function submitWithdraw() {
+            // Check if already processing
             if (isProcessing) {
                 console.log('Already processing, ignoring request');
                 return;
@@ -666,7 +693,7 @@
             });
 
             if (result.isConfirmed) {
-                isProcessing = true;
+                setProcessing(true); // ใช้ฟังก์ชันใหม่
                 retryCount = 0;
                 
                 try {
@@ -684,16 +711,15 @@
                         showConfirmButton: false
                     });
 
-                    // Create payload for withdraw request
+                    // Create payload matching the GAS parameter structure
                     const payload = {
-                        action: 'withdraw',
+                        action: 'withdrawal',
                         userId: userData.userId,
-                        amount: amount,
+                        amount: amount.toString(),
                         bank: bank,
                         account: accountNumber,
                         accountName: accountName,
                         timestamp: new Date().toISOString(),
-                        // Add additional metadata for debugging
                         userAgent: navigator.userAgent,
                         referrer: document.referrer || 'direct'
                     };
@@ -902,14 +928,14 @@
                     }).then((result) => {
                         if (result.isConfirmed) {
                             // Reset processing flag and try again
-                            isProcessing = false;
+                            setProcessing(false);
                             setTimeout(() => submitWithdraw(), 500);
                         } else {
                             window.location.href = 'index.html';
                         }
                     });
                 } finally {
-                    isProcessing = false;
+                    setProcessing(false); // ใช้ฟังก์ชันใหม่
                 }
             }
         }
