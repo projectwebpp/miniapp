@@ -1,4 +1,13 @@
-<!DOCTYPE html>
+// Load Wallet Data
+        async function loadWalletData() {
+            try {
+                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const data = await response.json();
+                
+                console.log('Wallet data:', data); // Debug log
+                
+                if (data.success) {
+                    w<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +17,128 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        .mobile-header {
+            background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .page-title {
+            flex: 1;
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+            border: none;
+            color: white;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateX(-2px);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .btn-animate {
+            transition: all 0.3s ease;
+            transform: translateY(0);
+        }
+        
+        .btn-animate:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-animate:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .input-group input:focus,
+        .input-group select:focus {
+            transform: scale(1.01);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+        }
+        
+        .valid-input {
+            border-color: #10b981 !important;
+            background-color: #f0fdf4 !important;
+        }
+        
+        .invalid-input {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+        
+        .warning-input {
+            border-color: #f59e0b !important;
+            background-color: #fffbeb !important;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        
+        /* Custom checkbox style */
+        input[type="checkbox"] {
+            cursor: pointer;
+        }
+        
+        input[type="checkbox"]:checked {
+            background-color: #f59e0b;
+            border-color: #f59e0b;
+        }
+        
+        /* Loading animation */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -172,36 +302,26 @@
             </div>
         </div>
     </div>
-
+    
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
         // Global Variables
-        let userData = {
-            userId: 'demo-user',
-            displayName: 'Demo User',
-            pictureUrl: ''
-        };
-        let walletData = { balance: 5000 }; // Demo balance
+        let userData = {};
+        let walletData = { balance: 0 };
 
-        // Utility functions
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount);
+        // Go back function
+        function goBack() {
+            window.history.back();
         }
 
+        // Format account number for display
         function formatAccountNumber(account) {
             // Format as XXX-X-XXXXX-X for display
             if (account.length === 10) {
                 return `${account.slice(0,3)}-${account.slice(3,4)}-${account.slice(4,9)}-${account.slice(9)}`;
             }
             return account;
-        }
-
-        function goBack() {
-            window.history.back();
         }
 
         // Show terms modal
@@ -502,11 +622,38 @@
                         showConfirmButton: false
                     });
 
-                    // Simulate API call
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Prepare payload for Google Apps Script
+                    const payload = {
+                        action: 'withdraw',
+                        userId: userData.userId,
+                        displayName: userData.displayName,
+                        amount: amount,
+                        bank: bank,
+                        accountNumber: accountNumber,
+                        accountName: accountName,
+                        timestamp: new Date().toISOString()
+                    };
 
-                    // Show success
-                    await Swal.fire({
+                    console.log('Sending payload:', payload); // Debug log
+
+                    // Submit to Google Apps Script
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await response.json();
+                    console.log('Response from server:', data); // Debug log
+
+                    if (data.success) {
+                        // Update local balance
+                        walletData.balance -= amount;
+                        
+                        // Show success
+                        await Swal.fire({
                         icon: 'success',
                         title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
                         html: `
