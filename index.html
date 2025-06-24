@@ -21,13 +21,13 @@
     </div>
 
     <!-- Main App (hidden by default) -->
-    <div id="app" class="hidden min-h-screen">
+    <div id="app" class="hidden min-h-screen flex-col">
         <!-- Header -->
         <div class="bg-gradient-to-r from-yellow-400 to-amber-500 p-4 shadow-lg">
             <div class="flex items-center space-x-3">
-                <img id="userPic" src="" alt="Profile" class="w-12 h-12 rounded-full border-2 border-white">
+                <img id="userPic" src="avatar.jpg" alt="Profile" class="w-12 h-12 rounded-full border-2 border-white">
                 <div class="flex-1">
-                    <h1 class="text-white font-bold text-lg">ระบบออมทอง</h1>
+                    <h1 class="text-white font-bold text-lg">ระบบอัมทอง</h1>
                     <p id="userName" class="text-white text-sm"></p>
                 </div>
                 <div class="text-right">
@@ -38,7 +38,7 @@
         </div>
 
         <!-- Portfolio Content -->
-        <div id="portfolioContent" class="p-4 page-container">
+        <div id="portfolioContent" class="p-4 page-container flex-1">
             <!-- Action Buttons -->
             <div class="grid grid-cols-2 gap-4 mb-6">
                 <button onclick="navigateToPage('buy.html')" class="bg-green-500 text-white py-4 rounded-lg font-semibold hover:bg-green-600 transition card-hover btn-animate">
@@ -81,12 +81,12 @@
         </div>
 
         <!-- Dashboard Content -->
-        <div id="dashboardContent" class="p-4 hidden page-container">
+        <div id="dashboardContent" class="p-4 hidden page-container flex-1">
             <p class="text-center text-gray-500">กำลังโหลดข้อมูลราคาทอง...</p>
         </div>
 
         <!-- Wallet Content -->
-        <div id="walletContent" class="p-4 hidden page-container">
+        <div id="walletContent" class="p-4 hidden page-container flex-1">
             <!-- Wallet Balance -->
             <div class="bg-white rounded-lg shadow p-6 mb-4 card-hover">
                 <div class="flex items-center justify-between">
@@ -116,19 +116,22 @@
                 </div>
             </div>
         </div>
-    </div>
-            <!-- Tab Navigation -->
-        <div class="tabs flex bg-white border-b">
-            <button id="portfolioTab" onclick="switchTab('portfolio')" class="tab flex-1 py-3 text-center font-semibold tab-active btn-animate">
-                <i class="fas fa-chart-pie mr-2"></i>พอร์ตโฟลิโอ
-            </button>
-            <button id="dashboardTab" onclick="switchTab('dashboard')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
-                <i class="fas fa-chart-line mr-2"></i>ราคาทอง
-            </button>
-            <button id="walletTab" onclick="switchTab('wallet')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
-                <i class="fas fa-wallet mr-2"></i>กระเป๋าเงิน
-            </button>
+
+        <!-- Tab Navigation -->
+        <div class="tabs fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t z-10">
+            <div class="flex">
+                <button id="portfolioTab" onclick="switchTab('portfolio')" class="tab flex-1 py-3 text-center font-semibold tab-active btn-animate">
+                    <i class="fas fa-chart-pie mr-2"></i>พอร์ตโฟลิโอ
+                </button>
+                <button id="dashboardTab" onclick="switchTab('dashboard')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
+                    <i class="fas fa-chart-line mr-2"></i>ราคาทอง
+                </button>
+                <button id="walletTab" onclick="switchTab('wallet')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
+                    <i class="fas fa-wallet mr-2"></i>กระเป๋าเงิน
+                </button>
+            </div>
         </div>
+    </div>
 
     <script src="config.js"></script>
     <script src="utils.js"></script>
