@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>จัดการระบบ - ระบบออมทอง</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100">
+    <!-- Mobile Header -->
+    <div class="mobile-header p-4 flex items-center space-x-4">
+        <button onclick="goBack()" class="back-btn">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <h1 class="page-title">จัดการระบบ</h1>
+        <button onclick="refreshData()" class="back-btn">
+            <i class="fas fa-sync-alt"></i>
+        </button>
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <i class="fas fa-cog text-6xl text-purple-500 animate-spin mb-4"></i>
+            <p class="text-gray-600">กำลังโหลด...</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="app" class="hidden page-container p-4">
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow card-hover">
+                <div class="flex items-center">
+                    <i class="fas fa-users text-3xl text-blue-500 mr-3"></i>
+                    <div>
+                        <p class="text-gray-500 text-sm">ผู้ใช้ทั้งหมด</p>
+                        <p id="totalUsers" class="text-2xl font-bold text-blue-600">0</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow card-hover">
+                <div class="flex items-center">
+                    <i class="fas fa-clock text-3xl text-orange-500 mr-3"></i>
+                    <div>
+                        <p class="text-gray-500 text-sm">รอการอนุมัติ</p>
+                        <p id="pendingCount" class="text-2xl font-bold text-orange-600">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="bg-white rounded-lg shadow mb-4">
+            <div class="flex border-b">
+                <button onclick="switchTab('pending')" id="pendingTab" class="flex-1 py-3 px-4 text-center font-medium border-b-2 border-orange-500 text-orange-600">
+                    <i class="fas fa-clock mr-2"></i>รอการอนุมัติ
+                </button>
+                <button onclick="switchTab('users')" id="usersTab" class="flex-1 py-3 px-4 text-center font-medium text-gray-500">
+                    <i class="fas fa-users mr-2"></i>ผู้ใช้งาน
+                </button>
+                <button onclick="switchTab('stats')" id="statsTab" class="flex-1 py-3 px-4 text-center font-medium text-gray-500">
+                    <i class="fas fa-chart-bar mr-2"></i>สถิติ
+                </button>
+            </div>
+        </div>
+
+        <!-- Pending Transactions Tab -->
+        <div id="pendingContent" class="space-y-4">
+            <!-- Pending transactions will be loaded here -->
+        </div>
+
+        <!-- Users Tab -->
+        <div id="usersContent" class="hidden space-y-4">
+            <!-- Users list will be loaded here -->
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="statsContent" class="hidden">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="font-bold text-lg mb-4">
+                    <i class="fas fa-chart-line mr-2 text-blue-500"></i>สถิติระบบ
+                </h3>
+                <div id="systemStats" class="grid grid-cols-2 gap-4">
+                    <!-- Statistics will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Detail Modal -->
+    <div id="transactionModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg max-w-md w-full p-6 max-h-96 overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">รายละเอียดรายการ</h3>
+                <button onclick="closeTransactionModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="transactionDetails">
+                <!-- Transaction details will be loaded here -->
+            </div>
+            <div id="transactionActions" class="flex space-x-3 mt-6">
+                <!-- Action buttons will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script>
+        // Global Variables
+        let userData = {};
+        let pendingTransactions = [];
+        let allUsers = [];
+        let systemStats = {};
+        let currentTab = 'pending';
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            // Reset all tabs
+            document.querySelectorAll('[id$="Tab"]').forEach(tabBtn => {
+                tabBtn.classList.remove('border-orange-500', 'text-orange-600');
+                tabBtn.classList.add('text-gray-500');
+            });
+            
+            // Hide all content
+            document.getElementById('pendingContent').classList.add('hidden');
+            document.getElementById('usersContent').classList.add('hidden');
+            document.getElementById('statsContent').classList.add('hidden');
+
+            // Activate selected tab
+            currentTab = tab;
+            document.getElementById(tab + 'Tab').classList.add('border-orange-500', 'text-orange-600');
+            document.getElementById(tab + 'Tab').classList.remove('text-gray-500');
+            document.getElementById(tab + 'Content').classList.remove('hidden');
+
+            // Load content for the selected tab
+            if (tab === 'pending') {
+                loadPendingTransactions();
+            } else if (tab === 'users') {
+                loadUsers();
+            } else if (tab === 'stats') {
+                loadSystemStats();
+            }
+        }
+
+        // Refresh all data
+        async function refreshData() {
+            const refreshBtn = event.target;
+            const originalIcon = refreshBtn.innerHTML;
+            
+            refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            refreshBtn.disabled = true;
+
+            try {
+                await loadPendingTransactions();
+                await loadUsers();
+                await loadSystemStats();
+                updateStatistics();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'รีเฟรชเรียบร้อย',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถรีเฟรชข้อมูลได้', 'error');
+            } finally {
+                refreshBtn.innerHTML = originalIcon;
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // Load pending transactions
+        async function loadPendingTransactions() {
+            try {
+                const response = await fetch(`${API_URL}?action=getPendingTransactions`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    pendingTransactions = data.transactions;
+                    renderPendingTransactions();
+                    updateStatistics();
+                }
+            } catch (error) {
+                console.error('Error loading pending transactions:', error);
+            }
+        }
+
+        // Render pending transactions
+        function renderPendingTransactions() {
+            const container = document.getElementById('pendingContent');
+            container.innerHTML = '';
+
+            if (pendingTransactions.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <i class="fas fa-check-circle text-6xl text-green-500 mb-4"></i>
+                        <p class="text-gray-500">ไม่มีรายการรอการอนุมัติ</p>
+                    </div>
+                `;
+                return;
+            }
+
+            pendingTransactions.forEach(transaction => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow p-4 card-hover';
+                
+                const typeColor = transaction.type === 'เติมเงิน' ? 'text-green-600' : 'text-orange-600';
+                const typeIcon = transaction.type === 'เติมเงิน' ? 'fa-plus-circle' : 'fa-minus-circle';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center mb-2">
+                                <i class="fas ${typeIcon} ${typeColor} mr-2"></i>
+                                <span class="font-semibold ${typeColor}">${transaction.type}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-1">ผู้ใช้: ${transaction.userId}</p>
+                            <p class="text-sm text-gray-600 mb-1">จำนวน: ฿${formatCurrency(transaction.amount)}</p>
+                            <p class="text-sm text-gray-600 mb-1">ธนาคาร: ${transaction.bank}</p>
+                            <p class="text-xs text-gray-500">${transaction.date}</p>
+                        </div>
+                        <div class="flex flex-col space-y-2">
+                            <button onclick="showTransactionDetail('${transaction.userId}', '${transaction.date}')" 
+                                    class="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 btn-animate">
+                                <i class="fas fa-eye mr-1"></i>ดู
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Show transaction detail modal
+        async function showTransactionDetail(userId, date) {
+            const transaction = pendingTransactions.find(t => t.userId === userId && t.date === date);
+            if (!transaction) return;
+
+            const modal = document.getElementById('transactionModal');
+            const detailsContainer = document.getElementById('transactionDetails');
+            const actionsContainer = document.getElementById('transactionActions');
+
+            const typeColor = transaction.type === 'เติมเงิน' ? 'text-green-600' : 'text-orange-600';
+
+            detailsContainer.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">ประเภท:</span>
+                        <span class="${typeColor} font-semibold">${transaction.type}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">ผู้ใช้:</span>
+                        <span>${transaction.userId}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">จำนวนเงิน:</span>
+                        <span class="font-bold">฿${formatCurrency(transaction.amount)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">ธนาคาร:</span>
+                        <span>${transaction.bank}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">เลขบัญชี:</span>
+                        <span>${transaction.account}</span>
+                    </div>
+                    ${transaction.accountName ? `
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">ชื่อบัญชี:</span>
+                        <span>${transaction.accountName}</span>
+                    </div>
+                    ` : ''}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">วันที่:</span>
+                        <span>${transaction.date}</span>
+                    </div>
+                    ${transaction.slipUrl ? `
+                    <div class="mt-4">
+                        <p class="text-gray-600 mb-2">สลิปการโอนเงิน:</p>
+                        <img src="${transaction.slipUrl}" alt="Slip" class="w-full max-h-64 object-contain border rounded">
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            actionsContainer.innerHTML = `
+                <button onclick="approveTransaction('${userId}', '${date}', ${transaction.amount}, '${transaction.type}')" 
+                        class="flex-1 bg-green-500 text-white py-2 rounded-lg font-semibold hover:bg-green-600 btn-animate">
+                    <i class="fas fa-check mr-2"></i>อนุมัติ
+                </button>
+                <button onclick="rejectTransaction('${userId}', '${date}')" 
+                        class="flex-1 bg-red-500 text-white py-2 rounded-lg font-semibold hover:bg-red-600 btn-animate">
+                    <i class="fas fa-times mr-2"></i>ปฏิเสธ
+                </button>
+            `;
+
+            modal.classList.remove('hidden');
+        }
+
+        // Close transaction modal
+        function closeTransactionModal() {
+            document.getElementById('transactionModal').classList.add('hidden');
+        }
+
+        // Approve transaction
+        async function approveTransaction(userId, date, amount, type) {
+            const result = await Swal.fire({
+                title: 'ยืนยันการอนุมัติ',
+                text: `คุณต้องการอนุมัติ${type} จำนวน ฿${formatCurrency(amount)} ใช่หรือไม่?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'อนุมัติ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#10b981'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'updateTransactionStatus',
+                            userId: userId,
+                            transactionDate: date,
+                            newStatus: 'สำเร็จ'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        Swal.fire('สำเร็จ', 'อนุมัติรายการเรียบร้อยแล้ว', 'success');
+                        closeTransactionModal();
+                        await loadPendingTransactions();
+                    } else {
+                        throw new Error(data.message || 'ไม่สามารถอนุมัติได้');
+                    }
+                } catch (error) {
+                    console.error('Error approving transaction:', error);
+                    Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถอนุมัติได้', 'error');
+                }
+            }
+        }
+
+        // Reject transaction
+        async function rejectTransaction(userId, date) {
+            const { value: reason } = await Swal.fire({
+                title: 'เหตุผลในการปฏิเสธ',
+                input: 'textarea',
+                inputPlaceholder: 'กรอกเหตุผล (ไม่บังคับ)',
+                showCancelButton: true,
+                confirmButtonText: 'ปฏิเสธ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ef4444'
+            });
+
+            if (reason !== undefined) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'rejectTransaction',
+                            userId: userId,
+                            transactionDate: date,
+                            reason: reason || 'ไม่ระบุเหตุผล'
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        Swal.fire('สำเร็จ', 'ปฏิเสธรายการเรียบร้อยแล้ว', 'success');
+                        closeTransactionModal();
+                        await loadPendingTransactions();
+                    } else {
+                        throw new Error(data.message || 'ไม่สามารถปฏิเสธได้');
+                    }
+                } catch (error) {
+                    console.error('Error rejecting transaction:', error);
+                    Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถปฏิเสธได้', 'error');
+                }
+            }
+        }
+
+        // Load users
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_URL}?action=getAllUsers`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    allUsers = data.users;
+                    renderUsers();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        // Render users
+        function renderUsers() {
+            const container = document.getElementById('usersContent');
+            container.innerHTML = '';
+
+            if (allUsers.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow text-center">
+                        <i class="fas fa-users text-6xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">ไม่มีข้อมูลผู้ใช้</p>
+                    </div>
+                `;
+                return;
+            }
+
+            allUsers.forEach(user => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-lg shadow p-4 card-hover';
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-lg">${user.userName}</h4>
+                            <p class="text-sm text-gray-600 mb-2">ID: ${user.userId}</p>
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500">ทองซื้อ:</span>
+                                    <span class="font-medium">${formatNumber(user.totalBuyAmount)} กรัม</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">ทองขาย:</span>
+                                    <span class="font-medium">${formatNumber(user.totalSellAmount)} กรัม</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">รายการ:</span>
+                                    <span class="font-medium">${user.transactionCount} ครั้ง</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">ยอดเงิน:</span>
+                                    <span class="font-medium">฿${formatCurrency(user.walletBalance || 0)}</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">ล่าสุด: ${user.lastTransaction}</p>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Load system statistics
+        async function loadSystemStats() {
+            try {
+                const response = await fetch(`${API_URL}?action=getSystemStatistics`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    systemStats = data.statistics;
+                    renderSystemStats();
+                }
+            } catch (error) {
+                console.error('Error loading system statistics:', error);
+            }
+        }
+
+        // Render system statistics
+        function renderSystemStats() {
+            const container = document.getElementById('systemStats');
+            
+            const stats = [
+                { label: 'รายการทั้งหมด', value: systemStats.totalTransactions || 0, icon: 'fa-exchange-alt', color: 'blue' },
+                { label: 'ปริมาณทองซื้อ', value: `${formatNumber(systemStats.goldTransactions?.buy?.amount || 0)} กรัม`, icon: 'fa-coins', color: 'yellow' },
+                { label: 'ปริมาณทองขาย', value: `${formatNumber(systemStats.goldTransactions?.sell?.amount || 0)} กรัม`, icon: 'fa-hand-holding-usd', color: 'green' },
+                { label: 'เติมเงินทั้งหมด', value: `฿${formatCurrency(systemStats.walletTransactions?.topup?.amount || 0)}`, icon: 'fa-plus-circle', color: 'green' },
+                { label: 'ถอนเงินทั้งหมด', value: `฿${formatCurrency(systemStats.walletTransactions?.withdraw?.amount || 0)}`, icon: 'fa-minus-circle', color: 'red' },
+                { label: 'มูลค่าซื้อรวม', value: `฿${formatCurrency(systemStats.goldTransactions?.buy?.value || 0)}`, icon: 'fa-chart-line', color: 'purple' }
+            ];
+
+            container.innerHTML = stats.map(stat => `
+                <div class="text-center p-4 bg-gray-50 rounded-lg">
+                    <i class="fas ${stat.icon} text-2xl text-${stat.color}-500 mb-2"></i>
+                    <p class="text-xs text-gray-500 mb-1">${stat.label}</p>
+                    <p class="font-bold text-${stat.color}-600">${stat.value}</p>
+                </div>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            document.getElementById('totalUsers').textContent = allUsers.length;
+            document.getElementById('pendingCount').textContent = pendingTransactions.length;
+        }
+
+        // Initialize LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (liff.isLoggedIn()) {
+                    initApp();
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error('LIFF init failed:', err);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+            }
+        };
+
+        // Initialize App
+        async function initApp() {
+            try {
+                const profile = await liff.getProfile();
+                userData = {
+                    userId: profile.userId,
+                    name: profile.displayName,
+                    picture: profile.pictureUrl
+                };
+
+                // Load initial data
+                await loadPendingTransactions();
+                await loadUsers();
+                await loadSystemStats();
+                
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                
+                // Set initial tab
+                switchTab('pending');
+                
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
