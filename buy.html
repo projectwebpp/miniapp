@@ -28,6 +28,19 @@
             <p class="text-gray-600">กำลังโหลด...</p>
         </div>
     </div>
+    <!-- Tab Navigation -->
+        <div class="tabs flex bg-white border-b">
+            <button id="portfolioTab" onclick="switchTab('portfolio')" class="tab flex-1 py-3 text-center font-semibold tab-active btn-animate">
+                <i class="fas fa-chart-pie mr-2"></i>พอร์ตโฟลิโอ
+            </button>
+            <button id="dashboardTab" onclick="switchTab('dashboard')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
+                <i class="fas fa-chart-line mr-2"></i>ราคาทอง
+            </button>
+            <button id="walletTab" onclick="switchTab('wallet')" class="tab flex-1 py-3 text-center font-semibold btn-animate">
+                <i class="fas fa-wallet mr-2"></i>กระเป๋าเงิน
+            </button>
+        </div>
+
 
     <!-- Main Content -->
     <div id="app" class="hidden page-container p-4">
