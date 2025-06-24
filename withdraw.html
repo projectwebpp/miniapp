@@ -161,27 +161,15 @@
             </div>
         </div>
     </div>
-    
-    <script>
-        // ===== Configuration =====
-        const CONFIG = {
-            API_URL: 'https://script.google.com/macros/s/AKfycbzFo7RGF4Ye1sJIz15J-oOgOCbJJE9WzKBNI9GzwdAhCHDC9t71NlXWDbNi1UucYm6g/exec',
-            LIFF_ID: '2006453326-vXgbO9NL', // แทนที่ด้วย LIFF ID จริง
-            MIN_WITHDRAW_AMOUNT: 100
-        };
 
+
+     <script src="config.js"></script>
+    <script src="utils.js"></script>
+    <script>
         // ===== Global Variables =====
         let userData = {};
         let walletData = { balance: 0 };
         let bankAccounts = [];
-
-        // ===== Utility Functions =====
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount);
-        }
 
         function formatAccountNumber(accountNumber) {
             if (accountNumber.length === 10) {
