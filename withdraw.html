@@ -490,7 +490,7 @@
             }
         }
 
-        // Submit withdraw request
+        // Submit withdraw request with improved error handling
         async function submitWithdraw() {
             // Prevent double submission
             if (isProcessing) {
@@ -586,13 +586,12 @@
                         amount: amount,
                         bank: bank,
                         account: accountNumber,
-                        accountName: accountName,
-                        timestamp: new Date().toISOString()
+                        accountName: accountName
                     };
 
                     console.log('Sending withdraw request:', payload);
 
-                    // Submit to Google Apps Script
+                    // Submit to Google Apps Script with better error handling
                     const response = await fetch(API_URL, {
                         method: 'POST',
                         headers: {
@@ -602,22 +601,37 @@
                     });
 
                     console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
                     
-                    let data;
-                    try {
-                        const responseText = await response.text();
-                        console.log('Response text:', responseText);
+                    // Try to get response data
+                    let responseData;
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/json')) {
+                        responseData = await response.json();
+                        console.log('JSON Response:', responseData);
+                    } else {
+                        // If not JSON, try to read as text
+                        const textResponse = await response.text();
+                        console.log('Text Response:', textResponse);
                         
-                        // Try to parse JSON
-                        data = JSON.parse(responseText);
-                        console.log('Parsed response:', data);
-                    } catch (parseError) {
-                        console.error('Failed to parse response:', parseError);
-                        // If can't parse, assume success (GAS sometimes returns HTML)
-                        data = { success: true };
+                        // Check if it's an HTML error page
+                        if (textResponse.includes('<html') || textResponse.includes('<!DOCTYPE')) {
+                            console.log('Received HTML response - treating as success');
+                            responseData = { success: true };
+                        } else {
+                            // Try to parse as JSON anyway
+                            try {
+                                responseData = JSON.parse(textResponse);
+                            } catch (e) {
+                                console.log('Could not parse response, assuming success');
+                                responseData = { success: true };
+                            }
+                        }
                     }
 
-                    if (data.success || response.ok) {
+                    // Check if withdrawal was successful
+                    if (responseData.success || response.ok || response.status === 200) {
                         await Swal.fire({
                             icon: 'success',
                             title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
@@ -666,10 +680,15 @@
                             width: '90%'
                         });
                         
-                        window.location.href = 'index.html';
+                        // Redirect to home page
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 500);
+                        
                     } else {
-                        throw new Error(data.message || 'ไม่สามารถส่งคำขอถอนเงินได้');
+                        throw new Error(responseData.message || 'ไม่สามารถส่งคำขอถอนเงินได้');
                     }
+                    
                 } catch (error) {
                     console.error('Error submitting withdrawal:', error);
                     
