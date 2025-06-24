@@ -20,7 +20,6 @@
         <h1 class="page-title">เติมเงิน</h1>
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
-
     <!-- Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
@@ -28,7 +27,6 @@
             <p class="text-gray-600">กำลังโหลด...</p>
         </div>
     </div>
-
     <!-- Main Content -->
     <div id="app" class="hidden page-container p-4">
         <div class="max-w-md mx-auto">
@@ -49,7 +47,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Current Balance -->
             <div class="bg-white rounded-lg shadow p-4 mb-6 card-hover">
                 <div class="text-center">
@@ -57,13 +54,12 @@
                     <p id="currentBalance" class="text-2xl font-bold text-blue-600">฿0.00</p>
                 </div>
             </div>
-
             <!-- Top-up Form -->
             <div class="bg-white rounded-lg shadow p-6 card-hover">
                 <h2 class="text-xl font-bold mb-6 text-center">
                     <i class="fas fa-plus-circle mr-2 text-blue-500"></i>เติมเงินเข้ากระเป๋า
                 </h2>
-                
+
                 <div class="space-y-4">
                     <!-- Amount -->
                     <div>
@@ -74,7 +70,6 @@
                                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <p class="text-xs text-gray-500 mt-1">จำนวนเงินขั้นต่ำ 100 บาท</p>
                     </div>
-
                     <!-- Bank Selection -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -84,7 +79,6 @@
                             <!-- Options will be populated by JavaScript -->
                         </select>
                     </div>
-
                     <!-- Account Number -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -99,7 +93,6 @@
                         </div>
                         <p class="text-xs text-gray-500 mt-1">คลิกที่ไอคอนเพื่อคัดลอกเลขบัญชี</p>
                     </div>
-
                     <!-- Slip Upload -->
                     <div id="slipUploadSection">
                         <label class="block text-sm font-medium mb-2">
@@ -111,7 +104,7 @@
                             <p class="text-xs text-gray-500 mt-1">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
                         </label>
                         <input type="file" id="topupSlip" accept="image/jpeg,image/png" class="hidden">
-                        
+
                         <div id="filePreview" class="mt-3 hidden">
                             <p id="topupFileName" class="text-sm text-gray-600 mb-2"></p>
                             <img id="previewImage" src="" alt="Preview" class="file-preview mt-2 w-full max-h-48 object-cover rounded-lg">
@@ -120,7 +113,6 @@
                             </button>
                         </div>
                     </div>
-
                     <!-- Instructions -->
                     <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 class="font-semibold text-yellow-800 mb-2">
@@ -134,7 +126,6 @@
                         </ol>
                     </div>
                 </div>
-
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-6">
                     <button id="submitTopupBtn" onclick="submitTopup()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed btn-animate">
@@ -148,7 +139,6 @@
             </div>
         </div>
     </div>
-
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
@@ -164,11 +154,11 @@
         // Update bank dropdowns in the UI
         function updateBankDropdowns() {
             const bankSelect = document.getElementById('topupBank');
-            
+
             if (bankSelect) {
                 // Clear existing options
                 bankSelect.innerHTML = '<option value="">-- เลือกธนาคาร --</option>';
-                
+
                 // Add new options based on BANK_ACCOUNTS
                 for (const [bankName, accountNumber] of Object.entries(BANK_ACCOUNTS)) {
                     const option = document.createElement('option');
@@ -183,7 +173,7 @@
         function updateAccountNumber() {
             const bankSelect = document.getElementById('topupBank');
             const accountNumberField = document.getElementById('topupAccountNumber');
-            
+
             if (bankSelect && accountNumberField) {
                 const selectedBank = bankSelect.value;
                 accountNumberField.value = BANK_ACCOUNTS[selectedBank] || '';
@@ -203,8 +193,8 @@
                     setTimeout(() => {
                         copyBtn.innerHTML = originalIcon;
                     }, 2000);
-                    
-                                            // Show toast notification
+
+                    // Show toast notification
                     Swal.fire({
                         icon: 'success',
                         title: 'คัดลอกเรียบร้อย',
@@ -259,10 +249,12 @@
                 Swal.fire('ผิดพลาด', 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ขั้นต่ำ 100 บาท)', 'error');
                 return;
             }
+
             if (!bank) {
                 Swal.fire('ผิดพลาด', 'กรุณาเลือกธนาคาร', 'error');
                 return;
             }
+
             if (!slipFile) {
                 Swal.fire('ผิดพลาด', 'กรุณาอัพโหลดสลิปโอนเงิน', 'error');
                 return;
@@ -343,7 +335,7 @@
                         confirmButtonColor: '#10b981',
                         allowOutsideClick: false
                     });
-                    
+
                     window.location.href = 'index.html';
                 } else {
                     throw new Error(result.message || 'ไม่สามารถเติมเงินได้');
@@ -414,7 +406,6 @@
                 document.getElementById('topupAmount').addEventListener('input', function() {
                     const amount = parseFloat(this.value) || 0;
                     const submitBtn = document.getElementById('submitTopupBtn');
-
                     if (amount < 100) {
                         submitBtn.disabled = true;
                         this.style.borderColor = '#ef4444';
@@ -483,7 +474,6 @@
                     e.preventDefault();
                     fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
                     fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
-
                     if (e.dataTransfer.files.length > 0) {
                         const file = e.dataTransfer.files[0];
 
