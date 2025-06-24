@@ -81,7 +81,6 @@
         <h1 class="page-title">ถอนเงิน</h1>
         <div class="w-10"></div>
     </div>
-
     <!-- Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
@@ -90,7 +89,6 @@
             <div class="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mt-4"></div>
         </div>
     </div>
-
     <!-- Main Content -->
     <div id="app" class="hidden page-container p-4 fade-in">
         <div class="max-w-md mx-auto">
@@ -105,13 +103,12 @@
                     <p class="text-xs text-gray-500">จำนวนเงินที่สามารถถอนได้</p>
                 </div>
             </div>
-
             <!-- Withdraw Form -->
             <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
                 <h2 class="text-xl font-bold mb-6 text-center text-gray-800">
                     <i class="fas fa-money-check-alt mr-2 text-orange-500"></i>ถอนเงินจากกระเป๋า
                 </h2>
-                
+
                 <div class="space-y-6">
                     <!-- Quick Amount Buttons -->
                     <div>
@@ -122,7 +119,6 @@
                             <!-- จะถูกสร้างด้วย JavaScript -->
                         </div>
                     </div>
-
                     <!-- Amount Input -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -133,7 +129,6 @@
                         <div id="amountError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">จำนวนเงินขั้นต่ำ 100 บาท</p>
                     </div>
-
                     <!-- Bank Selection -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -157,19 +152,17 @@
                         </select>
                         <div id="bankError" class="text-xs text-red-500 mt-1 hidden"></div>
                     </div>
-
                     <!-- Account Number -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
                             <i class="fas fa-credit-card mr-1 text-orange-500"></i>เลขที่บัญชี
                         </label>
                         <input type="text" id="withdrawAccount" placeholder="กรอกเลขที่บัญชี 10-15 หลัก"
-                               class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg font-mono" 
+                               class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-lg font-mono"
                                pattern="[0-9]{10,15}" maxlength="15">
                         <div id="accountError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">กรอกเลขที่บัญชีของคุณ (ไม่ต้องมีขีด)</p>
                     </div>
-
                     <!-- Account Name -->
                     <div class="input-group">
                         <label class="block text-sm font-medium mb-2 text-gray-700">
@@ -180,7 +173,6 @@
                         <div id="nameError" class="text-xs text-red-500 mt-1 hidden"></div>
                         <p class="text-xs text-gray-500 mt-1">ชื่อต้องตรงกับเจ้าของบัญชีธนาคาร</p>
                     </div>
-
                     <!-- Processing Fee Info -->
                     <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
                         <h4 class="font-semibold text-blue-800 mb-3 flex items-center">
@@ -205,7 +197,6 @@
                             </div>
                         </div>
                     </div>
-
                     <!-- Terms and Conditions -->
                     <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                         <label class="flex items-start space-x-3 cursor-pointer">
@@ -219,10 +210,9 @@
                         <div id="termsError" class="text-xs text-red-500 mt-2 hidden"></div>
                     </div>
                 </div>
-
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-8">
-                    <button id="submitWithdrawBtn" onclick="submitWithdraw()" 
+                    <button id="submitWithdrawBtn" onclick="submitWithdraw()"
                             class="flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold transition-all duration-300 disabled:cursor-not-allowed btn-animate text-lg"
                             disabled>
                         <i class="fas fa-paper-plane mr-2"></i>ยืนยันการถอนเงิน
@@ -234,7 +224,7 @@
             </div>
         </div>
     </div>
-    
+
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
@@ -284,9 +274,9 @@
         function createQuickAmountButtons() {
             const container = document.getElementById('quickAmountButtons');
             container.innerHTML = ''; // Clear existing buttons
-            
+
             const amounts = [500, 1000, 2000, 3000, 5000];
-            
+
             amounts.forEach(amount => {
                 if (amount <= walletData.balance) {
                     const button = document.createElement('button');
@@ -322,10 +312,8 @@
             const input = document.getElementById('withdrawAmount');
             const error = document.getElementById('amountError');
             const amount = parseFloat(input.value) || 0;
-
             error.classList.add('hidden');
             input.classList.remove('valid-input', 'invalid-input', 'warning-input');
-
             if (!amount) {
                 return false;
             } else if (amount < 100) {
@@ -347,10 +335,8 @@
         function validateBank() {
             const select = document.getElementById('withdrawBank');
             const error = document.getElementById('bankError');
-
             error.classList.add('hidden');
             select.classList.remove('valid-input', 'invalid-input');
-
             if (!select.value) {
                 select.classList.add('invalid-input');
                 error.textContent = 'กรุณาเลือกธนาคาร';
@@ -366,10 +352,8 @@
             const input = document.getElementById('withdrawAccount');
             const error = document.getElementById('accountError');
             const account = input.value.trim();
-
             error.classList.add('hidden');
             input.classList.remove('valid-input', 'invalid-input');
-
             if (!account) {
                 input.classList.add('invalid-input');
                 error.textContent = 'กรุณากรอกเลขที่บัญชี';
@@ -395,10 +379,8 @@
             const input = document.getElementById('withdrawAccountName');
             const error = document.getElementById('nameError');
             const name = input.value.trim();
-
             error.classList.add('hidden');
             input.classList.remove('valid-input', 'invalid-input');
-
             if (!name) {
                 input.classList.add('invalid-input');
                 error.textContent = 'กรุณากรอกชื่อเจ้าของบัญชี';
@@ -418,9 +400,7 @@
         function validateTerms() {
             const checkbox = document.getElementById('acceptTerms');
             const error = document.getElementById('termsError');
-
             error.classList.add('hidden');
-
             if (!checkbox.checked) {
                 error.textContent = 'กรุณายอมรับเงื่อนไขการถอนเงิน';
                 error.classList.remove('hidden');
@@ -435,7 +415,6 @@
             const validAccount = validateAccount();
             const validName = validateAccountName();
             const validTerms = validateTerms();
-
             return validAmount && validBank && validAccount && validName && validTerms;
         }
 
@@ -443,7 +422,6 @@
         function updateButtonState() {
             const submitBtn = document.getElementById('submitWithdrawBtn');
             const isValid = validateForm();
-
             if (walletData.balance < 100) {
                 submitBtn.disabled = true;
                 submitBtn.className = 'flex-1 bg-gray-400 text-white py-4 rounded-xl font-semibold cursor-not-allowed text-lg';
@@ -540,9 +518,9 @@
                         showConfirmButton: false
                     });
 
-                    // Create payload for withdraw request - แก้ไข action name
+                    // Create payload for withdraw request
                     const payload = {
-                        action: 'withdraw', // เปลี่ยนจาก 'handleWithdraw' เป็น 'withdraw' ตาม GS
+                        action: 'withdraw',
                         userId: userData.userId,
                         amount: amount,
                         bank: bank,
@@ -612,7 +590,7 @@
                             allowOutsideClick: false,
                             width: '90%'
                         });
-                        
+
                         window.location.href = 'index.html';
                     } else {
                         throw new Error(data.message || 'ไม่สามารถส่งคำขอถอนเงินได้');
@@ -644,13 +622,13 @@
             try {
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
                 const data = await response.json();
-                
+
                 console.log('Wallet data:', data); // Debug log
-                
+
                 if (data.success) {
                     walletData.balance = data.balance || 0;
                     document.getElementById('withdrawBalance').textContent = '฿' + formatCurrency(walletData.balance);
-                    
+
                     // Create quick amount buttons after loading balance
                     createQuickAmountButtons();
                     updateButtonState();
@@ -698,9 +676,7 @@
                     displayName: profile.displayName,
                     pictureUrl: profile.pictureUrl
                 };
-
                 console.log('User data:', userData); // Debug log
-
                 await loadWalletData();
 
                 // Check if user has sufficient balance
@@ -738,7 +714,7 @@
                 // Show app
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
-                
+
             } catch (error) {
                 console.error('Error initializing app:', error);
                 Swal.fire({
@@ -798,6 +774,21 @@
 
             // Initial validation
             updateButtonState();
+        }
+
+        // Helper function to format currency
+        function formatCurrency(amount) {
+            return amount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        }
+
+        // Helper function to format account number
+        function formatAccountNumber(accountNumber) {
+            return accountNumber.replace(/(\d{3})(?=\d)/g, '$1-');
+        }
+
+        // Helper function to go back
+        function goBack() {
+            window.history.back();
         }
     </script>
 </body>
