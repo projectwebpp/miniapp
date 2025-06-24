@@ -9,7 +9,36 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+        .valid-input {
+            border-color: #10b981 !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+        .invalid-input {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+        .warning-input {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+        }
+        .btn-animate {
+            transition: all 0.3s ease;
+        }
+        .btn-animate:hover {
+            transform: translateY(-2px);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -175,7 +204,6 @@
     </div>
     
     <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
         // Global Variables
         let userData = {};
@@ -230,7 +258,7 @@
                             <ul class="space-y-1 text-green-700">
                                 <li>• สามารถยกเลิกได้ก่อนการอนุมัติ</li>
                                 <li>• หลังอนุมัติแล้วไม่สามารถยกเลิกได้</li>
-                                <li>• กรณีข้อมูลผิดพลาดจะติดต่อกลับ</li>
+                                <li>• กรณี Hareketplace
                             </ul>
                         </div>
                     </div>
@@ -261,7 +289,7 @@
                 }
             });
 
-            // Add "ทั้งหมด" button if balance > 100
+            // Add "ทั้งหมด" button if balance >= 100
             if (walletData.balance >= 100) {
                 const allButton = document.createElement('button');
                 allButton.type = 'button';
@@ -443,6 +471,10 @@
                             <p class="font-semibold text-orange-800 mb-3 text-center">📋 รายละเอียดการถอนเงิน</p>
                             <div class="space-y-2">
                                 <div class="flex justify-between">
+                                    <span class="text-gray-600">จำนวนเงิน:</span>
+                                    <span class="font-semibold">฿${formatCurrency(amount)}</span>
+                                </div>
+                                <div class="flex justify-between">
                                     <span class="text-gray-600">ธนาคาร:</span>
                                     <span class="font-semibold">${bank}</span>
                                 </div>
@@ -550,7 +582,6 @@
                                             <p>✅ สถานะ: รอดำเนินการ</p>
                                             <p>🔍 ตรวจสอบ: ภายใน 24 ชั่วโมง</p>
                                             <p>💰 โอนเงิน: 1-2 วันทำการ</p>
-                                            <p>📱 แจ้งเตือน: ผ่าน LINE เมื่อเสร็จสิ้น</p>
                                         </div>
                                     </div>
                                     <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
@@ -656,14 +687,14 @@
                                 <p class="text-gray-600">คุณต้องมียอดเงินในกระเป๋าอย่างน้อย 100 บาท เพื่อทำการถอนเงิน</p>
                             </div>
                         `,
-                        confirmButtonText: '💎 ไปขายทอง',
+                        confirmButtonText: '💎 ไปเติมเงิน',
                         showCancelButton: true,
                         cancelButtonText: '🏠 กลับหน้าหลัก',
                         confirmButtonColor: '#f59e0b',
                         cancelButtonColor: '#6b7280'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            window.location.href = 'sell.html';
+                            window.location.href = 'topup.html';
                         } else {
                             window.location.href = 'index.html';
                         }
