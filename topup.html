@@ -268,6 +268,17 @@
                 return;
             }
 
+            // Validate file type and size
+            if (!ALLOWED_FILE_TYPES.includes(slipFile.type)) {
+                Swal.fire('ผิดพลาด', 'ประเภทไฟล์ไม่ถูกต้อง รองรับเฉพาะ JPG และ PNG', 'error');
+                return;
+            }
+
+            if (slipFile.size > MAX_FILE_SIZE) {
+                Swal.fire('ผิดพลาด', 'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 5MB)', 'error');
+                return;
+            }
+
             // Show loading
             const submitBtn = document.getElementById('submitTopupBtn');
             submitBtn.disabled = true;
@@ -320,6 +331,12 @@
                                     <p class="text-sm text-blue-800">💰 เงินจะเข้าบัญชีภายใน 5-10 นาที</p>
                                     <p class="text-sm text-blue-800">📱 คุณจะได้รับการแจ้งเตือนผ่าน LINE</p>
                                 </div>
+                                ${result.slipUrl ? `
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-700 mb-2">สลิปที่อัพโหลด:</p>
+                                    <img src="${result.slipUrl}" alt="Slip" class="max-w-full h-32 object-contain mx-auto rounded border">
+                                </div>
+                                ` : ''}
                             </div>
                         `,
                         confirmButtonText: 'กลับหน้าหลัก',
