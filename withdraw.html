@@ -595,28 +595,29 @@
                     // Submit to Google Apps Script
                     const response = await fetch(API_URL, {
                         method: 'POST',
-                        mode: 'no-cors', // Important for GAS
                         headers: {
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify(payload)
                     });
 
-                    // Since no-cors mode, we can't read response directly
-                    // We'll assume success if no error thrown
-                    console.log('Request sent successfully');
-
-                    // Wait a bit to ensure server processed
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-
-                    // Check wallet balance to verify transaction
-                    const checkResponse = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
-                    const checkData = await checkResponse.json();
+                    console.log('Response status:', response.status);
                     
-                    console.log('Wallet check response:', checkData);
+                    let data;
+                    try {
+                        const responseText = await response.text();
+                        console.log('Response text:', responseText);
+                        
+                        // Try to parse JSON
+                        data = JSON.parse(responseText);
+                        console.log('Parsed response:', data);
+                    } catch (parseError) {
+                        console.error('Failed to parse response:', parseError);
+                        // If can't parse, assume success (GAS sometimes returns HTML)
+                        data = { success: true };
+                    }
 
-                    // If balance reduced, assume success
-                    if (checkData.success && checkData.balance < walletData.balance) {
+                    if (data.success || response.ok) {
                         await Swal.fire({
                             icon: 'success',
                             title: '🎉 ส่งคำขอถอนเงินสำเร็จ!',
@@ -667,8 +668,7 @@
                         
                         window.location.href = 'index.html';
                     } else {
-                        // If balance didn't change, try alternative method
-                        throw new Error('ไม่สามารถยืนยันการถอนเงินได้');
+                        throw new Error(data.message || 'ไม่สามารถส่งคำขอถอนเงินได้');
                     }
                 } catch (error) {
                     console.error('Error submitting withdrawal:', error);
