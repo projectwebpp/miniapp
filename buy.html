@@ -26,6 +26,10 @@
         <div class="text-center">
             <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
             <p class="text-gray-600">กำลังโหลด...</p>
+            <!-- เพิ่มแถบความคืบหน้า -->
+            <div class="w-48 bg-gray-200 rounded-full h-2 mt-4">
+                <div id="loadingProgress" class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
         </div>
     </div>
 
@@ -144,9 +148,77 @@
         let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let walletData = { balance: 0, transactions: [] };
 
+        // Loading progress tracker
+        let loadingSteps = 0;
+        const totalSteps = 3; // LIFF init, Profile, Wallet data
+
+        function updateLoadingProgress() {
+            loadingSteps++;
+            const progress = (loadingSteps / totalSteps) * 100;
+            const progressBar = document.getElementById('loadingProgress');
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+            }
+            
+            if (loadingSteps >= totalSteps) {
+                setTimeout(() => {
+                    hideLoading();
+                }, 200);
+            }
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
         // Go back function
         function goBack() {
             window.history.back();
+        }
+
+        // Centralized API call function with better error handling
+        async function makeApiCall(url, options = {}) {
+            const defaultOptions = {
+                method: 'GET',
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                    'Accept': 'application/json',
+                },
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                
+                const response = await fetch(url, {
+                    ...finalOptions,
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Response is not valid JSON:', text);
+                    throw new Error('Invalid JSON response');
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout');
+                }
+                throw error;
+            }
         }
 
         // Validation functions
@@ -205,7 +277,7 @@
         function calculateBuyTotal() {
             const amount = parseFloat(document.getElementById('buyAmount').value) || 0;
             const pricePerBaht = parseFloat(document.getElementById('buyPrice').value) || 0;
-            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const bahtEquivalent = amount / (GRAMS_PER_BAHT || 15.16);
             const total = bahtEquivalent * pricePerBaht;
             document.getElementById('buyTotal').textContent = '฿' + formatCurrency(total);
             
@@ -229,8 +301,10 @@
 
         // Update price display
         function updatePriceDisplay() {
-            document.getElementById('barPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.buyPrice);
-            document.getElementById('ornamentPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.buyPrice);
+            const barPrice = currentGoldPrices?.bar?.buyPrice || 0;
+            const ornamentPrice = currentGoldPrices?.ornament?.buyPrice || 0;
+            document.getElementById('barPrice').textContent = '฿' + formatCurrency(barPrice);
+            document.getElementById('ornamentPrice').textContent = '฿' + formatCurrency(ornamentPrice);
         }
 
         // Update wallet balance
@@ -268,7 +342,7 @@
             const amount = parseFloat(document.getElementById('buyAmount').value);
             const pricePerBaht = parseFloat(document.getElementById('buyPrice').value);
             const goldType = document.getElementById('buyGoldType').value;
-            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const bahtEquivalent = amount / (GRAMS_PER_BAHT || 15.16);
             const total = bahtEquivalent * pricePerBaht;
 
             // Check if user has enough balance in wallet
@@ -330,7 +404,9 @@
                         await updateWallet(-total, 'ซื้อทอง', 'สำเร็จ');
 
                         // Send LINE message
-                        await sendFlexMessage('ซื้อ', amount, pricePerBaht, total, newBalance, goldType);
+                        if (typeof sendFlexMessage === 'function') {
+                            await sendFlexMessage('ซื้อ', amount, pricePerBaht, total, newBalance, goldType);
+                        }
                         
                         // Show success message
                         await Swal.fire({
@@ -371,39 +447,83 @@
             }
         }
 
-        // Load Wallet Data
+        // Load Wallet Data with better error handling
         async function loadWalletData() {
             try {
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
-                const data = await response.json();
+                if (!API_URL) {
+                    throw new Error('API_URL not configured');
+                }
+                
+                console.log('Fetching wallet data...');
+                const data = await makeApiCall(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                
                 if (data.success) {
                     walletData.balance = data.balance || 0;
                     document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
                     calculateBuyTotal(); // Update button state
+                    console.log('Wallet data loaded successfully');
+                } else {
+                    throw new Error(data.message || 'Failed to get wallet data');
                 }
             } catch (error) {
                 console.error('Error loading wallet data:', error);
+                // Set default values
+                walletData.balance = 0;
+                document.getElementById('currentBalance').textContent = '฿0.00';
+                
+                // Show warning toast
+                if (error.message !== 'Request timeout') {
+                    Swal.fire({
+                        title: 'ไม่สามารถโหลดข้อมูลกระเป๋าเงินได้',
+                        text: 'กรุณาตรวจสอบการเชื่อมต่อ',
+                        icon: 'warning',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
             }
         }
 
         // Initialize LIFF
         window.onload = async function() {
             try {
+                // Check for required config
+                if (!LIFF_ID) {
+                    console.error('LIFF_ID not found in config.js');
+                    throw new Error('LIFF_ID not configured');
+                }
+                
                 await liff.init({ liffId: LIFF_ID });
-                if (liff.isLoggedIn()) {
+                updateLoadingProgress(); // Step 1: LIFF init
+                
+                // Fetch gold prices first
+                try {
                     const pricesFetched = await fetchGoldPrices();
                     console.log('Initial price fetch successful:', pricesFetched);
-                    initApp();
+                } catch (priceError) {
+                    console.error('Failed to fetch gold prices:', priceError);
+                }
+                
+                if (liff.isLoggedIn()) {
+                    await initApp();
                 } else {
                     liff.login();
                 }
             } catch (err) {
                 console.error('LIFF init failed:', err);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+                hideLoading();
+                Swal.fire({
+                    title: 'เตือน',
+                    text: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง',
+                    icon: 'warning',
+                    confirmButtonText: 'ตกลง'
+                });
             }
         };
 
-        // Initialize App
+        // Initialize App with faster loading
         async function initApp() {
             try {
                 const profile = await liff.getProfile();
@@ -413,19 +533,90 @@
                     picture: profile.pictureUrl
                 };
                 window.userData = userData; // Make available globally
-                await loadWalletData();
+                updateLoadingProgress(); // Step 2: Profile loaded
+                
+                // Update price display immediately with cached data if available
                 updateBuyPrice();
                 updatePriceDisplay();
+                
+                // Load wallet data in parallel
+                const walletPromise = loadWalletData();
+                
+                // Don't wait for wallet data to show the app
+                updateLoadingProgress(); // Step 3: App ready
                 
                 // Set up event listeners
                 document.getElementById('buyAmount').addEventListener('input', calculateBuyTotal);
                 document.getElementById('buyPrice').addEventListener('input', calculateBuyTotal);
                 
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
+                // Finish loading wallet data in background
+                await walletPromise;
+                
             } catch (error) {
                 console.error('Error initializing app:', error);
+                hideLoading();
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+            }
+        }
+
+        // Fallback functions if utils.js is not loaded
+        if (typeof formatNumber === 'undefined') {
+            window.formatNumber = function(num) {
+                return num.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            };
+        }
+
+        if (typeof formatCurrency === 'undefined') {
+            window.formatCurrency = function(amount) {
+                return amount.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            };
+        }
+
+        if (typeof getGoldTypeText === 'undefined') {
+            window.getGoldTypeText = function(type) {
+                return type === 'bar' ? 'ทองคำแท่ง 96.5%' : 'ทองรูปพรรณ 96.5%';
+            };
+        }
+
+        if (typeof getGoldUnitText === 'undefined') {
+            window.getGoldUnitText = function(grams) {
+                const baht = grams / 15.16;
+                if (baht >= 1) {
+                    return `${formatNumber(grams)} กรัม (${formatNumber(baht)} บาท)`;
+                } else {
+                    const salung = baht * 4;
+                    return `${formatNumber(grams)} กรัม (${formatNumber(salung)} สลึง)`;
+                }
+            };
+        }
+
+        // Improved fetchGoldPrices with better error handling
+        async function fetchGoldPrices() {
+            try {
+                if (!API_URL) {
+                    throw new Error('API_URL not configured');
+                }
+                
+                console.log('Fetching gold prices...');
+                const data = await makeApiCall(`${API_URL}?action=getGoldPrices`);
+                console.log('Gold prices fetched:', data);
+                
+                // Set default prices if not found
+                if (!window.currentGoldPrices) {
+                    window.currentGoldPrices = {
+                        bar: { buyPrice: 0, sellPrice: 0 },
+                        ornament: { buyPrice: 0, sellPrice: 0 }
+                    };
+                }
+                
+                if (data.success && data.prices) {
+                    window.currentGoldPrices = data.prices;
+                }
+                
+                return data.success || false;
+            } catch (error) {
+                console.error('Error fetching gold prices:', error);
+                return false;
             }
         }
     </script>
