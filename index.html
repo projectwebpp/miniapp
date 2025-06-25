@@ -190,13 +190,13 @@
                 await fetchBankAccounts();
                 if (liff.isLoggedIn()) {
                     const pricesFetched = await fetchGoldPrices();
-                    console.log('Initial price fetch successful:', pricesFetched);
+                   // console.log('Initial price fetch successful:', pricesFetched);
                     initApp();
                 } else {
                     liff.login();
                 }
             } catch (err) {
-                console.error('LIFF init failed:', err);
+                //console.error('LIFF init failed:', err);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
             }
         };
@@ -218,7 +218,7 @@
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
             } catch (error) {
-                console.error('Error initializing app:', error);
+                //console.error('Error initializing app:', error);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
         }
@@ -240,7 +240,7 @@
                     document.getElementById('ornamentGold').textContent = formatNumber(currentGoldData.balances.ornament?.totalGold || 0) + ' กรัม';
                 }
             } catch (error) {
-                console.error('Error loading gold data:', error);
+                //console.error('Error loading gold data:', error);
             }
         }
 
@@ -315,7 +315,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Error loading wallet data:', error);
+                //console.error('Error loading wallet data:', error);
             }
         }
 
