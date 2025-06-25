@@ -9,7 +9,22 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        .hidden {
+            display: none;
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -18,7 +33,7 @@
             <i class="fas fa-arrow-left"></i>
         </button>
         <h1 class="page-title">ซื้อทอง</h1>
-        <div class="w-10"></div> <!-- Spacer for center alignment -->
+        <div class="w-10"></div>
     </div>
 
     <!-- Loading Screen -->
@@ -26,6 +41,10 @@
         <div class="text-center">
             <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
             <p class="text-gray-600">กำลังโหลด...</p>
+            <!-- Progress Bar -->
+            <div class="w-48 bg-gray-200 rounded-full h-2 mt-4">
+                <div id="loadingProgress" class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
         </div>
     </div>
 
@@ -48,13 +67,12 @@
                     </div>
                 </div>
             </div>
-
             <!-- Buy Form -->
             <div class="bg-white rounded-lg shadow p-6 card-hover">
                 <h2 class="text-xl font-bold mb-6 text-center">
                     <i class="fas fa-shopping-cart mr-2 text-green-500"></i>ซื้อทอง
                 </h2>
-                
+
                 <div class="space-y-4">
                     <!-- Gold Type Selection -->
                     <div>
@@ -66,7 +84,6 @@
                             <option value="bar">ทองคำแท่ง 96.5%</option>
                         </select>
                     </div>
-
                     <!-- Unit Selection -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -85,7 +102,6 @@
                             <option value="custom">กำหนดเอง</option>
                         </select>
                     </div>
-
                     <!-- Amount -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -94,7 +110,6 @@
                         <input type="number" id="buyAmount" step="0.01" min="0.01" placeholder="กรอกจำนวนกรัม"
                                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500">
                     </div>
-
                     <!-- Price -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -103,7 +118,6 @@
                         <input type="number" id="buyPrice" step="0.01" min="1" placeholder="กรุณากรอกราคา"
                                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500" readonly>
                     </div>
-
                     <!-- Total -->
                     <div class="bg-green-50 p-4 rounded-lg border-2 border-green-200">
                         <div class="flex justify-between items-center">
@@ -113,16 +127,14 @@
                             <span id="buyTotal" class="text-2xl font-bold text-green-600">฿0.00</span>
                         </div>
                     </div>
-
                     <!-- Wallet Balance Info -->
                     <div id="walletInfo" class="bg-blue-50 p-3 rounded-lg border border-blue-200">
                         <p class="text-sm text-blue-800">
-                            <i class="fas fa-wallet mr-1"></i>ยอดเงินในกระเป๋า: 
+                            <i class="fas fa-wallet mr-1"></i>ยอดเงินในกระเป๋า:
                             <span id="currentBalance" class="font-bold">฿0.00</span>
                         </p>
                     </div>
                 </div>
-
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-6">
                     <button id="buyButton" onclick="buyGold()" class="flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition btn-animate">
@@ -143,6 +155,26 @@
         let userData = {};
         let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let walletData = { balance: 0, transactions: [] };
+        let currentGoldPrices = { bar: { buyPrice: 0 }, ornament: { buyPrice: 0 } };
+
+        // Constants
+        const GRAMS_PER_BAHT = 15.2;
+
+
+        // Simulate loading progress
+        document.addEventListener('DOMContentLoaded', function() {
+            let progress = 0;
+            const progressBar = document.getElementById('loadingProgress');
+            const interval = setInterval(() => {
+                progress += 1;
+                progressBar.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
+                }
+            }, 30);
+        });
 
         // Go back function
         function goBack() {
@@ -153,24 +185,36 @@
         function validateBuyInput() {
             const amount = parseFloat(document.getElementById('buyAmount').value);
             const price = parseFloat(document.getElementById('buyPrice').value);
-
             if (!amount || amount <= 0) {
                 return { valid: false, message: 'กรุณากรอกจำนวนทองที่ต้องการซื้อ' };
             }
-
             if (amount < 0.01) {
                 return { valid: false, message: 'จำนวนทองต้องมากกว่า 0.01 กรัม' };
             }
-
             if (!price || price <= 0) {
                 return { valid: false, message: 'กรุณากรอกราคาทองที่ถูกต้อง' };
             }
-
             if (price < 1) {
                 return { valid: false, message: 'ราคาทองต้องมากกว่า 1 บาท' };
             }
-
             return { valid: true };
+        }
+
+        // Utility functions
+        function formatNumber(num) {
+            return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
+        }
+
+        function formatCurrency(num) {
+            return num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        }
+
+        function getGoldTypeText(type) {
+            return type === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+        }
+
+        function getGoldUnitText(amount) {
+            return `${amount} กรัม`;
         }
 
         // Update price based on gold type
@@ -208,8 +252,6 @@
             const bahtEquivalent = amount / GRAMS_PER_BAHT;
             const total = bahtEquivalent * pricePerBaht;
             document.getElementById('buyTotal').textContent = '฿' + formatCurrency(total);
-            
-            // Update button state based on wallet balance
             updateButtonState(total);
         }
 
@@ -242,12 +284,10 @@
                 formData.append('amount', amount);
                 formData.append('description', description);
                 formData.append('status', status);
-
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     body: formData
                 });
-
                 const data = await response.json();
                 if (!data.success) {
                     console.error('Error updating wallet:', data.message);
@@ -264,14 +304,12 @@
                 Swal.fire('ข้อผิดพลาด', validation.message, 'error');
                 return;
             }
-
             const amount = parseFloat(document.getElementById('buyAmount').value);
             const pricePerBaht = parseFloat(document.getElementById('buyPrice').value);
             const goldType = document.getElementById('buyGoldType').value;
             const bahtEquivalent = amount / GRAMS_PER_BAHT;
             const total = bahtEquivalent * pricePerBaht;
 
-            // Check if user has enough balance in wallet
             if (walletData.balance < total) {
                 Swal.fire('ข้อผิดพลาด', 'ยอดเงินในกระเป๋าไม่เพียงพอ กรุณาเติมเงินก่อน', 'error');
                 return;
@@ -296,7 +334,6 @@
 
             if (result.isConfirmed) {
                 try {
-                    // Show loading
                     Swal.fire({
                         title: 'กำลังดำเนินการ...',
                         html: 'กำลังบันทึกรายการซื้อทอง',
@@ -322,17 +359,11 @@
                     });
 
                     const data = await response.json();
-
                     if (data.success) {
                         const newBalance = currentGoldData.totalGold + amount;
-
-                        // Deduct from wallet
                         await updateWallet(-total, 'ซื้อทอง', 'สำเร็จ');
-
-                        // Send LINE message
                         await sendFlexMessage('ซื้อ', amount, pricePerBaht, total, newBalance, goldType);
-                        
-                        // Show success message
+
                         await Swal.fire({
                             icon: 'success',
                             title: '🎉 ซื้อทองสำเร็จ!',
@@ -359,7 +390,6 @@
                             allowOutsideClick: false
                         });
 
-                        // Go back to main page
                         window.location.href = 'index.html';
                     } else {
                         Swal.fire('ข้อผิดพลาด', data.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
@@ -379,7 +409,7 @@
                 if (data.success) {
                     walletData.balance = data.balance || 0;
                     document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
-                    calculateBuyTotal(); // Update button state
+                    calculateBuyTotal();
                 }
             } catch (error) {
                 console.error('Error loading wallet data:', error);
@@ -412,21 +442,34 @@
                     name: profile.displayName,
                     picture: profile.pictureUrl
                 };
-                window.userData = userData; // Make available globally
+                window.userData = userData;
                 await loadWalletData();
                 updateBuyPrice();
                 updatePriceDisplay();
-                
-                // Set up event listeners
+
                 document.getElementById('buyAmount').addEventListener('input', calculateBuyTotal);
                 document.getElementById('buyPrice').addEventListener('input', calculateBuyTotal);
-                
+
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
             } catch (error) {
                 console.error('Error initializing app:', error);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
+        }
+
+        // Mock functions for demonstration
+        async function fetchGoldPrices() {
+            currentGoldPrices = {
+                bar: { buyPrice: 25000 },
+                ornament: { buyPrice: 24500 }
+            };
+            return true;
+        }
+
+        async function sendFlexMessage(type, amount, price, total, balance, goldType) {
+            console.log('Sending flex message:', { type, amount, price, total, balance, goldType });
+            return true;
         }
     </script>
 </body>
