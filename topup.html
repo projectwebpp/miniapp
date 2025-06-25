@@ -1,9 +1,3 @@
-// ส่งการแจ้งเตือนผ่าน LINE (ถ้ามี)
-                    try {
-                        if (typeof liff !== 'undefined' && liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
-                            const message = {
-                                type: 'text',
-                                text: `✅ ส่งคำขอเติมเงินสำเร็จ\n💰 จำนวน: ฿${formatCurrency(amount)}\n🏦 ธนาคาร: ${bank}\n📄 เลขที่รายการ: ${finalTransactionId}\n📋 สถานะ: ${finalStatus}\n⏰ รอการตรวจสอ<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -285,19 +279,21 @@
         </div>
     </div>
 
+   <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
-        // Configuration
-        const LIFF_ID = 'your-liff-id-here';
-        const API_URL = 'https://script.google.com/macros/s/your-script-id/exec';
+        // Global Variables
+        let userData = {};
+        let walletData = { balance: 0 };
         
-        // Bank accounts mapping
-        const BANK_ACCOUNTS = {
-            'กสิกรไทย': '123-4-56789-0',
-            'กรุงเทพ': '987-6-54321-0',
-            'ไทยพาณิชย์': '456-7-89012-3',
-            'กรุงไทย': '789-0-12345-6',
-            'ทหารไทยธนชาต': '321-6-54987-0'
-        };
+        // Go back function
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
         
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
@@ -323,14 +319,7 @@
             });
         }
 
-        // Go back function
-        function goBack() {
-            if (window.history.length > 1) {
-                window.history.back();
-            } else {
-                window.location.href = 'index.html';
-            }
-        }
+
 
         // Update account number based on bank selection
         function updateAccountNumber() {
