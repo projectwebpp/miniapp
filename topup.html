@@ -296,8 +296,16 @@
             }
         }
 
-        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-        const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
+        function firstFunction() {
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // Declaration within a function scope
+    // Use MAX_FILE_SIZE within firstFunction
+}
+
+function secondFunction() {
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // Declaration within another function scope
+    // Use MAX_FILE_SIZE within secondFunction
+}
+
 
         // Update account number based on bank selection
         function updateAccountNumber() {
