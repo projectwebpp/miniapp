@@ -265,10 +265,32 @@
                     walletData.transactions.forEach(transaction => {
                         const div = document.createElement('div');
                         div.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
-                        const typeColor = transaction.type === 'เติมเงิน' ? 'text-green-600' : 'text-red-600';
-                        const typeIcon = transaction.type === 'เติมเงิน' ? 'fa-plus-circle' : 'fa-minus-circle';
-                        const statusColor = transaction.status === 'สำเร็จ' ? 'text-green-500' :
-                        transaction.status === 'รอดำเนินการ' ? 'text-yellow-500' : 'text-red-500';
+                        
+                        // กำหนดสีและไอคอนตามประเภทธุรกรรม
+                        let typeColor, typeIcon;
+                        if (transaction.type === 'เติมเงิน') {
+                            typeColor = 'text-green-600';
+                            typeIcon = 'fa-plus-circle';
+                        } else if (transaction.type === 'อนุมัติถอนเงิน') {
+                            typeColor = 'text-blue-600';
+                            typeIcon = 'fa-check-circle';
+                        } else {
+                            typeColor = 'text-red-600';
+                            typeIcon = 'fa-minus-circle';
+                        }
+
+                        // กำหนดสีตามสถานะ
+                        let statusColor;
+                        if (transaction.status === 'สำเร็จ' || transaction.status === 'อนุมัติแล้ว') {
+                            statusColor = 'text-green-500';
+                        } else if (transaction.status === 'รอดำเนินการ' || transaction.status === 'รอการอนุมัติ') {
+                            statusColor = 'text-yellow-500';
+                        } else if (transaction.status === 'ยกเลิก' || transaction.status === 'ปฏิเสธ') {
+                            statusColor = 'text-red-500';
+                        } else {
+                            statusColor = 'text-gray-500';
+                        }
+
                         div.innerHTML = `
                             <div>
                                 <p class="font-semibold ${typeColor}">
