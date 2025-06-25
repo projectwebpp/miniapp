@@ -40,7 +40,7 @@ async function fetchGoldPrices() {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const data = await response.json();
-        console.log('API Response:', JSON.stringify(data, null, 2));
+        //console.log('API Response:', JSON.stringify(data, null, 2));
         if (!data.success || !Array.isArray(data.data)) {
             throw new Error('Invalid API response format: success is false or data is not an array');
         }
@@ -92,12 +92,12 @@ async function fetchBankAccounts() {
                 acc[bank.bankName] = bank.accountNumber;
                 return acc;
             }, {});
-            console.log('Fetched bank accounts:', BANK_ACCOUNTS);
+            //console.log('Fetched bank accounts:', BANK_ACCOUNTS);
         } else {
             console.error('Failed to fetch bank accounts:', data.message);
         }
     } catch (error) {
-        console.error('Error fetching bank accounts:', error);
+        //console.error('Error fetching bank accounts:', error);
     }
 }
 
@@ -320,11 +320,11 @@ async function sendFlexMessage(transactionType, amount, price, total, newBalance
     try {
         if (liff.isInClient()) {
             await liff.sendMessages([flexMessage]);
-            console.log('Flex Message sent successfully');
+            //console.log('Flex Message sent successfully');
         } else {
             console.warn('Cannot send Flex Message: Not in LINE client');
         }
     } catch (error) {
-        console.error('Error sending flex message:', error);
+        //console.error('Error sending flex message:', error);
     }
 }
