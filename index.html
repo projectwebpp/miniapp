@@ -294,34 +294,62 @@
             }
         }
 
-        // Load Gold Data (เพิ่ม timeout และตรวจสอบ API_URL)
-        async function loadGoldData() {
+        // Fixed API call with better error handling and CORS mode
+        async function makeApiCall(url, options = {}) {
+            const defaultOptions = {
+                method: 'GET',
+                mode: 'cors', // Explicitly set CORS mode
+                credentials: 'omit', // Don't send cookies
+                headers: {
+                    'Accept': 'application/json',
+                },
+            };
+            
+            const finalOptions = { ...defaultOptions, ...options };
+            
             try {
-                // ตรวจสอบว่ามี API_URL หรือไม่
-                if (!API_URL) {
-                    console.error('API_URL not found in config.js');
-                    throw new Error('API_URL not configured');
-                }
-                
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // เพิ่มเป็น 5 วินาที
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
                 
-                console.log('Fetching gold data from:', `${API_URL}?action=getBalance&userId=${userData.userId}`);
-                
-                const response = await fetch(`${API_URL}?action=getBalance&userId=${userData.userId}`, {
-                    signal: controller.signal,
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                const response = await fetch(url, {
+                    ...finalOptions,
+                    signal: controller.signal
                 });
+                
                 clearTimeout(timeoutId);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const data = await response.json();
+                const text = await response.text();
+                
+                // Try to parse as JSON
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Response is not valid JSON:', text);
+                    throw new Error('Invalid JSON response');
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout');
+                }
+                throw error;
+            }
+        }
+
+        // Load Gold Data (improved with better error handling)
+        async function loadGoldData() {
+            try {
+                if (!API_URL) {
+                    console.error('API_URL not found in config.js');
+                    throw new Error('API_URL not configured');
+                }
+                
+                console.log('Fetching gold data from:', `${API_URL}?action=getBalance&userId=${userData.userId}`);
+                
+                const data = await makeApiCall(`${API_URL}?action=getBalance&userId=${userData.userId}`);
                 console.log('Gold data response:', data);
                 
                 if (data.success) {
@@ -351,7 +379,7 @@
                 document.getElementById('ornamentGold').textContent = '0 กรัม';
                 
                 // แจ้งเตือนผู้ใช้เฉพาะเมื่อ error ไม่ใช่ timeout
-                if (error.name !== 'AbortError') {
+                if (error.message !== 'Request timeout') {
                     Swal.fire({
                         title: 'ไม่สามารถโหลดข้อมูลทองได้',
                         text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
@@ -365,32 +393,16 @@
             }
         }
 
-        // Load Wallet Data (เพิ่ม timeout และ error handling)
+        // Load Wallet Data (improved with better error handling)
         async function loadWalletData() {
             try {
                 if (!API_URL) {
                     throw new Error('API_URL not configured');
                 }
                 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
                 console.log('Fetching wallet data from:', `${API_URL}?action=getWallet&userId=${userData.userId}`);
                 
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`, {
-                    signal: controller.signal,
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
+                const data = await makeApiCall(`${API_URL}?action=getWallet&userId=${userData.userId}`);
                 console.log('Wallet data response:', data);
                 
                 if (data.success) {
@@ -465,7 +477,7 @@
                 document.getElementById('walletBalance').textContent = '฿0.00';
                 document.getElementById('walletHistory').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
                 
-                if (error.name !== 'AbortError') {
+                if (error.message !== 'Request timeout') {
                     Swal.fire({
                         title: 'ไม่สามารถโหลดข้อมูลกระเป๋าเงินได้',
                         text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
@@ -479,32 +491,16 @@
             }
         }
 
-        // Load Transactions (เพิ่ม timeout และ error handling)
+        // Load Transactions (improved with better error handling)
         async function loadTransactions() {
             try {
                 if (!API_URL) {
                     throw new Error('API_URL not configured');
                 }
                 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
                 console.log('Fetching transactions from:', `${API_URL}?action=getTransactions&userId=${userData.userId}`);
                 
-                const response = await fetch(`${API_URL}?action=getTransactions&userId=${userData.userId}`, {
-                    signal: controller.signal,
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                });
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
+                const data = await makeApiCall(`${API_URL}?action=getTransactions&userId=${userData.userId}`);
                 console.log('Transactions response:', data);
                 
                 if (data.success) {
@@ -544,7 +540,7 @@
                 console.error('Error loading transactions:', error);
                 document.getElementById('transactionList').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
                 
-                if (error.name !== 'AbortError') {
+                if (error.message !== 'Request timeout') {
                     Swal.fire({
                         title: 'ไม่สามารถโหลดประวัติการทำรายการได้',
                         text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
@@ -558,7 +554,20 @@
             }
         }
 
-        // Fallback functions สำหรับกรณีที่ไม่มีไฟล์ utils.js และ config.js
+        // Fallback functions สำหรับกรณีที่ไม่มีไฟล์ utils.js
+        if (typeof formatNumber === 'undefined') {
+            window.formatNumber = function(num) {
+                return num.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            };
+        }
+
+        if (typeof formatCurrency === 'undefined') {
+            window.formatCurrency = function(amount) {
+                return amount.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            };
+        }
+
+        // Improved fetchBankAccounts with better error handling
         async function fetchBankAccounts() {
             try {
                 if (!API_URL) {
@@ -566,11 +575,7 @@
                 }
                 
                 console.log('Fetching bank accounts...');
-                const response = await fetch(`${API_URL}?action=getBankAccounts`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+                const data = await makeApiCall(`${API_URL}?action=getBankAccounts`);
                 console.log('Bank accounts fetched:', data);
                 return data;
             } catch (error) {
@@ -579,6 +584,7 @@
             }
         }
 
+        // Improved fetchGoldPrices with better error handling
         async function fetchGoldPrices() {
             try {
                 if (!API_URL) {
@@ -586,11 +592,7 @@
                 }
                 
                 console.log('Fetching gold prices...');
-                const response = await fetch(`${API_URL}?action=getGoldPrices`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+                const data = await makeApiCall(`${API_URL}?action=getGoldPrices`);
                 console.log('Gold prices fetched:', data);
                 return data.success || false;
             } catch (error) {
