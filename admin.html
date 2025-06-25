@@ -218,18 +218,24 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
-        // Configuration - ปรับ URL ตามของคุณ
-        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
-        const LIFF_ID = 'YOUR_LIFF_ID_HERE';
-
         // Global Variables
         let userData = {};
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
+        let walletData = { balance: 0, transactions: [] };
         let pendingTransactions = [];
         let pendingWithdrawals = [];
         let allTransactions = [];
         let systemStats = {};
         let currentTab = 'pending';
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
+
 
         // Utility Functions
         function formatCurrency(amount) {
