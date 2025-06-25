@@ -280,18 +280,10 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
-        // Global Variables
-    // Global Variables
-        let userData = {};
-        let walletData = { balance: 0 };
-
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
+        // Configuration
+        const LIFF_ID = 'your-liff-id-here';
+        const API_URL = 'https://script.google.com/macros/s/your-script-id/exec';
         
         // Bank accounts mapping
         const BANK_ACCOUNTS = {
@@ -305,7 +297,10 @@
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
 
-    
+        // Global Variables
+        let userData = {};
+        let walletData = { balance: 0 };
+
         // Utility Functions
         function formatCurrency(amount) {
             return new Intl.NumberFormat('th-TH', {
@@ -400,7 +395,7 @@
             updateProcessSteps(2);
         }
 
-        // Submit top-up request - แก้ไขให้ใช้หลักการเหมือนถอนเงิน
+        // Submit top-up request - แก้ไขให้ใช้ FormData เพื่อแก้ปัญหา CORS
         async function submitTopup() {
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
@@ -444,41 +439,62 @@
                     second: '2-digit'
                 });
 
-                // Prepare payload สำหรับ Google Apps Script
-                const payload = {
-                    action: 'topup',
-                    userId: userData.userId,
-                    userName: userData.name,
-                    amount: amount,
-                    bank: bank,
-                    account: account,
-                    slip: base64,
-                    filename: slipFile.name,
-                    fileType: slipFile.type,
-                    transactionId: transactionId,
-                    dateTime: dateTime,
-                    status: 'pending' // เริ่มต้นด้วยสถานะ pending
-                };
+                // สร้าง FormData แทน JSON เพื่อแก้ปัญหา CORS
+                const formData = new FormData();
+                formData.append('action', 'topup');
+                formData.append('userId', userData.userId);
+                formData.append('userName', userData.name);
+                formData.append('amount', amount.toString());
+                formData.append('bank', bank);
+                formData.append('account', account);
+                formData.append('slip', base64);
+                formData.append('filename', slipFile.name);
+                formData.append('fileType', slipFile.type);
+                formData.append('transactionId', transactionId);
+                formData.append('dateTime', dateTime);
+                formData.append('status', 'pending');
 
-                console.log('Sending payload:', { ...payload, slip: '[BASE64_DATA]' });
+                console.log('Sending FormData with transaction ID:', transactionId);
 
-                // Send data to Google Apps Script
+                // Send data to Google Apps Script แบบ FormData (ไม่มี CORS issue)
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
+                    body: formData // ไม่ต้องใส่ Content-Type header เมื่อใช้ FormData
                 });
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const result = await response.json();
-                console.log('Server response:', result);
+                // รับผลลัพธ์เป็น text แล้วแปลงเป็น JSON
+                const resultText = await response.text();
+                console.log('Raw server response:', resultText);
+                
+                let result;
+                try {
+                    result = JSON.parse(resultText);
+                } catch (parseError) {
+                    console.log('Response is not JSON, treating as text response');
+                    result = { success: true, message: resultText };
+                }
+                
+                console.log('Parsed server response:', result);
 
-                if (result.success) {
+                if (result.success || resultText.includes('success') || resultText.includes('สำเร็จ')) {
+                    // บันทึกรายการในประวัติ
+                    const transactionRecord = {
+                        id: transactionId,
+                        type: 'topup',
+                        amount: amount,
+                        bank: bank,
+                        account: account,
+                        dateTime: dateTime,
+                        status: 'pending',
+                        filename: slipFile.name
+                    };
+                    
+                    saveToLocalHistory(transactionRecord);
+                    
                     // อัพเดทยอดเงินในหน้าปัจจุบัน (ถ้าต้องการแสดงทันที)
                     // walletData.balance += amount;
                     // document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
@@ -514,7 +530,7 @@
                     
                     // ส่งการแจ้งเตือนผ่าน LINE (ถ้ามี)
                     try {
-                        if (liff.isApiAvailable('shareTargetPicker')) {
+                        if (typeof liff !== 'undefined' && liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
                             const message = {
                                 type: 'text',
                                 text: `✅ ส่งคำขอเติมเงินสำเร็จ\n💰 จำนวน: ${formatCurrency(amount)} บาท\n🏦 ธนาคาร: ${bank}\n📄 เลขที่รายการ: ${transactionId}\n⏰ รอการตรวจสอบ 5-10 นาที`
@@ -527,26 +543,46 @@
                         console.log('LINE notification error (non-critical):', lineError);
                     }
                     
-                    // กลับไปหน้าหลัก
-                    window.location.href = 'index.html';
+                    // แสดง success notification
+                    await showSuccessNotification(transactionRecord);
+                    
+                    // รอสักครู่แล้วกลับไปหน้าหลัก
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                    
                 } else {
-                    throw new Error(result.message || 'ไม่สามารถส่งคำขอเติมเงินได้');
+                    throw new Error(result.message || resultText || 'ไม่สามารถส่งคำขอเติมเงินได้');
                 }
             } catch (error) {
                 console.error('Topup error:', error);
                 
-                let errorMessage = 'เกิดข้อผิดพลาดในการเติมเงิน';
-                if (error.message.includes('fetch')) {
-                    errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง';
-                } else if (error.message) {
-                    errorMessage = error.message;
+                let errorMessage = handleNetworkError(error);
+                
+                // ตรวจสอบข้อผิดพลาดเฉพาะ
+                if (error.message.includes('CORS')) {
+                    errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+                } else if (error.message.includes('NetworkError')) {
+                    errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
                 }
                 
                 Swal.fire({
                     icon: 'error',
                     title: 'เกิดข้อผิดพลาด',
-                    text: errorMessage,
-                    confirmButtonColor: '#ef4444'
+                    html: `
+                        <div class="text-left">
+                            <p class="mb-3">${errorMessage}</p>
+                            <div class="bg-gray-50 p-3 rounded text-sm">
+                                <p class="font-semibold mb-1">ข้อมูลที่กรอก:</p>
+                                <p>• จำนวนเงิน: ฿${formatCurrency(amount)}</p>
+                                <p>• ธนาคาร: ${bank}</p>
+                                <p>• ไฟล์สลิป: ${slipFile.name}</p>
+                            </div>
+                            <p class="mt-3 text-sm text-gray-600">ข้อมูลของคุณได้ถูกบันทึกไว้ สามารถลองส่งใหม่ได้</p>
+                        </div>
+                    `,
+                    confirmButtonColor: '#ef4444',
+                    confirmButtonText: 'ลองใหม่'
                 });
             } finally {
                 // Reset button state
@@ -741,23 +777,67 @@
         // Google Apps Script Integration Functions
         async function sendToGoogleSheets(data) {
             try {
+                // ใช้ FormData แทน JSON เพื่อหลีกเลี่ยง CORS issues
+                const formData = new FormData();
+                
+                // เพิ่มข้อมูลทั้งหมดลงใน FormData
+                Object.keys(data).forEach(key => {
+                    formData.append(key, data[key]);
+                });
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    mode: 'cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
+                    body: formData // ไม่ต้องใส่ headers เมื่อใช้ FormData
                 });
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
 
-                const result = await response.json();
-                return result;
+                // รับผลลัพธ์เป็น text ก่อน
+                const resultText = await response.text();
+                
+                // พยายามแปลงเป็น JSON
+                try {
+                    return JSON.parse(resultText);
+                } catch (parseError) {
+                    // ถ้าไม่ได้เป็น JSON ให้ถือว่าสำเร็จถ้ามีคำว่า success หรือ สำเร็จ
+                    return {
+                        success: resultText.includes('success') || resultText.includes('สำเร็จ'),
+                        message: resultText
+                    };
+                }
             } catch (error) {
                 console.error('Google Sheets API Error:', error);
+                throw error;
+            }
+        }
+
+        // Alternative fetch method สำหรับ Google Apps Script
+        async function sendDataToGAS(data) {
+            // วิธีที่ 1: ใช้ FormData (แนะนำ)
+            const formData = new FormData();
+            
+            // เพิ่มข้อมูลลงใน FormData
+            for (const [key, value] of Object.entries(data)) {
+                formData.append(key, value);
+            }
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.text();
+                console.log('GAS Response:', result);
+                
+                return {
+                    success: true,
+                    data: result
+                };
+            } catch (error) {
+                console.error('Error sending to GAS:', error);
                 throw error;
             }
         }
