@@ -218,10 +218,11 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
-        
+        // Configuration - ปรับ URL ตามของคุณ
+        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+        const LIFF_ID = 'YOUR_LIFF_ID_HERE';
+
         // Global Variables
         let userData = {};
         let pendingTransactions = [];
@@ -593,7 +594,7 @@
                     .then(responseData => {
                         console.log('Approve withdrawal response:', responseData);
                         
-                        // ตรวจสอบ response (ปรับตามผลลัพธ์ที่ GS ส่งกลับมา)
+                        // ตรวจสอบ response
                         if (responseData.includes('success') || 
                             responseData.includes('สำเร็จ') || 
                             responseData.includes('อนุมัติ')) {
@@ -910,7 +911,7 @@
                         <p>ยอดรวม: <span class="font-bold text-amber-600">฿${formatCurrency(totalAmount)}</span></p>
                     </div>
                     
-                    <div class="space-y-2">
+                    <div class="space-y-2 max-h-64 overflow-y-auto">
                         ${pendingWithdrawals.map(w => `
                             <div class="border rounded-lg p-3 text-sm">
                                 <div class="flex justify-between">
@@ -1086,23 +1087,6 @@
 
                 loadPendingWithdrawals();
             }
-        }        }
-                    } catch (error) {
-                        errorCount++;
-                        console.error('Error rejecting withdrawal:', error);
-                    }
-                }
-
-                Swal.close();
-                
-                if (errorCount === 0) {
-                    Swal.fire('สำเร็จ!', `ปฏิเสธถอนเงินทั้งหมด ${successCount} รายการเรียบร้อย`, 'success');
-                } else {
-                    Swal.fire('เสร็จสิ้น', `ปฏิเสธสำเร็จ ${successCount} รายการ, ล้มเหลว ${errorCount} รายการ`, 'info');
-                }
-
-                loadPendingWithdrawals();
-            }
         }
 
         // Load system statistics
@@ -1238,7 +1222,7 @@
                     Swal.fire({
                         icon: 'warning',
                         title: 'การกำหนดค่า',
-                        text: 'กรุณาตั้งค่า API_URL ในไฟล์ config.js',
+                        text: 'กรุณาตั้งค่า API_URL ในส่วนต้นของไฟล์',
                         confirmButtonText: 'ตกลง'
                     });
                 }
@@ -1264,4 +1248,4 @@
         }
     </script>
 </body>
-</html>
+</html>    
