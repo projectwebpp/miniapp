@@ -94,7 +94,7 @@ async function fetchBankAccounts() {
             }, {});
             //console.log('Fetched bank accounts:', BANK_ACCOUNTS);
         } else {
-            console.error('Failed to fetch bank accounts:', data.message);
+            //console.error('Failed to fetch bank accounts:', data.message);
         }
     } catch (error) {
         //console.error('Error fetching bank accounts:', error);
