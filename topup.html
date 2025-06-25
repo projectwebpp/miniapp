@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+// ส่งการแจ้งเตือนผ่าน LINE (ถ้ามี)
+                    try {
+                        if (typeof liff !== 'undefined' && liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
+                            const message = {
+                                type: 'text',
+                                text: `✅ ส่งคำขอเติมเงินสำเร็จ\n💰 จำนวน: ฿${formatCurrency(amount)}\n🏦 ธนาคาร: ${bank}\n📄 เลขที่รายการ: ${finalTransactionId}\n📋 สถานะ: ${finalStatus}\n⏰ รอการตรวจสอ<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -280,24 +285,26 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
-        // Global Variables
-        let userData = {};
-        let walletData = { balance: 0 };
+        // Configuration
+        const LIFF_ID = 'your-liff-id-here';
+        const API_URL = 'https://script.google.com/macros/s/your-script-id/exec';
         
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
-        
-        
+        // Bank accounts mapping
+        const BANK_ACCOUNTS = {
+            'กสิกรไทย': '123-4-56789-0',
+            'กรุงเทพ': '987-6-54321-0',
+            'ไทยพาณิชย์': '456-7-89012-3',
+            'กรุงไทย': '789-0-12345-6',
+            'ทหารไทยธนชาต': '321-6-54987-0'
+        };
         
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
 
-        
+        // Global Variables
+        let userData = {};
+        let walletData = { balance: 0 };
 
         // Utility Functions
         function formatCurrency(amount) {
@@ -501,7 +508,7 @@
 
                 // สร้าง FormData แทน JSON เพื่อแก้ปัญหา CORS
                 const formData = new FormData();
-                formData.append('action', 'addDepositTransaction'); // เปลี่ยนจาก 'topup' เป็น 'addDepositTransaction'
+                formData.append('action', 'deposit'); // เปลี่ยนเป็น action ที่ GS รองรับ
                 formData.append('userId', userData.userId);
                 formData.append('amount', amount.toString());
                 formData.append('bank', bank);
@@ -509,7 +516,7 @@
                 formData.append('slip', base64);
                 formData.append('filename', slipFile.name);
                 
-                // เพิ่มข้อมูลเสริมสำหรับการติดตาม
+                // เพิ่มข้อมูลเสริม
                 formData.append('transactionId', transactionId);
                 formData.append('dateTime', dateTime);
 
@@ -540,17 +547,22 @@
                 console.log('Parsed server response:', result);
 
                 if (result.success || resultText.includes('success') || resultText.includes('สำเร็จ') || resultText.includes('เรียบร้อย')) {
+                    // ดึงข้อมูลจาก response ของ GS
+                    const finalTransactionId = result.transactionId || transactionId;
+                    const finalSlipUrl = result.slipUrl || '';
+                    const finalStatus = result.status || 'รอดำเนินการ';
+                    
                     // บันทึกรายการในประวัติ
                     const transactionRecord = {
-                        id: transactionId,
-                        type: 'deposit', // เปลี่ยนเป็น deposit
+                        id: finalTransactionId,
+                        type: 'deposit', 
                         amount: amount,
                         bank: bank,
                         account: account,
                         dateTime: dateTime,
-                        status: 'รอดำเนินการ', // ใช้สถานะเดียวกับ GS
+                        status: finalStatus,
                         filename: slipFile.name,
-                        slipUrl: result.slipUrl || '' // เก็บ URL ของสลิปถ้ามี
+                        slipUrl: finalSlipUrl
                     };
                     
                     saveToLocalHistory(transactionRecord);
@@ -565,18 +577,20 @@
                                     <p class="text-lg font-semibold text-green-800">รายละเอียดการเติมเงิน</p>
                                     <hr class="my-2">
                                     <div class="text-left space-y-1">
-                                        <p><strong>เลขที่รายการ:</strong> ${transactionId}</p>
+                                        <p><strong>เลขที่รายการ:</strong> ${finalTransactionId}</p>
                                         <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
                                         <p><strong>ธนาคาร:</strong> ${bank}</p>
                                         <p><strong>เลขที่บัญชี:</strong> ${account}</p>
                                         <p><strong>วันที่:</strong> ${dateTime}</p>
-                                        <p><strong>สถานะ:</strong> <span class="text-orange-600">รอดำเนินการ</span></p>
+                                        <p><strong>สถานะ:</strong> <span class="text-orange-600">${finalStatus}</span></p>
+                                        ${finalSlipUrl ? `<p><strong>สลิป:</strong> <a href="${finalSlipUrl}" target="_blank" class="text-blue-600 underline">ดูสลิป</a></p>` : ''}
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 p-4 rounded-lg">
                                     <p class="text-sm text-blue-800">💰 รอการตรวจสอบภายใน 1-2 วันทำการ</p>
                                     <p class="text-sm text-blue-800">📱 คุณจะได้รับการแจ้งเตือนเมื่อเงินเข้าบัญชี</p>
                                     <p class="text-sm text-blue-800">📄 สามารถตรวจสอบสถานะได้ในประวัติการทำรายการ</p>
+                                    ${result.message ? `<p class="text-sm text-blue-800 mt-2 font-semibold">📝 ${result.message}</p>` : ''}
                                 </div>
                             </div>
                         `,
@@ -691,20 +705,36 @@
             }
         }
 
-        // Load Wallet Data
+        // Load Wallet Data - ใช้ API ของ GS ปัจจุบัน
         async function loadWalletData() {
             try {
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`, {
+                    method: 'GET'
+                });
+                
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Wallet data response:', data);
+                    
                     if (data.success) {
                         walletData.balance = data.balance || 0;
                         document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                    } else {
+                        console.error('Failed to load wallet data:', data.message);
+                        // ตั้งค่าเริ่มต้นถ้าไม่สามารถโหลดได้
+                        walletData.balance = 0;
+                        document.getElementById('currentBalance').textContent = '฿0.00';
                     }
+                } else {
+                    console.error('HTTP error getting wallet:', response.status);
+                    walletData.balance = 0;
+                    document.getElementById('currentBalance').textContent = '฿0.00';
                 }
             } catch (error) {
                 console.error('Error loading wallet data:', error);
                 // ไม่แสดง error ให้ผู้ใช้เห็น เพื่อไม่ให้รบกวนการใช้งาน
+                walletData.balance = 0;
+                document.getElementById('currentBalance').textContent = '฿0.00';
             }
         }
 
