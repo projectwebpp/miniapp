@@ -34,7 +34,7 @@ function getGoldTypeText(goldType) {
 // Fetch current gold prices
 async function fetchGoldPrices() {
     try {
-        console.log('Fetching gold prices from:', GOLD_PRICE_API);
+        //console.log('Fetching gold prices from:', GOLD_PRICE_API);
         const response = await fetch(GOLD_PRICE_API);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
@@ -47,7 +47,7 @@ async function fetchGoldPrices() {
         
         let barBuyPrice = 0, barSellPrice = 0, ornamentBuyPrice = 0, ornamentSellPrice = 0;
         for (const item of data.data) {
-            console.log('Processing item:', item);
+            //console.log('Processing item:', item);
             if (item.sellPriceGoldBar === "ราคาขายออก" && item.taxBasePrice === "ทองคำแท่ง 96.5%") {
                 barBuyPrice = parseFloat(item.buyPriceGoldOrnament) || 0;
                 //console.log(`Found bar buy price (ราคาขายออก): ${barBuyPrice}`);
@@ -62,7 +62,7 @@ async function fetchGoldPrices() {
             }
         }
         
-        console.log('Parsed Prices:', { barBuyPrice, barSellPrice, ornamentBuyPrice, ornamentSellPrice });
+        //console.log('Parsed Prices:', { barBuyPrice, barSellPrice, ornamentBuyPrice, ornamentSellPrice });
         
         if (!barBuyPrice || !barSellPrice || !ornamentBuyPrice) {
             throw new Error('Missing required price data: barBuyPrice, barSellPrice, or ornamentBuyPrice');
@@ -73,7 +73,7 @@ async function fetchGoldPrices() {
         currentGoldPrices.ornament.buyPrice = ornamentBuyPrice;
         currentGoldPrices.ornament.sellPrice = ornamentSellPrice;
         
-        console.log('Stored Prices:', currentGoldPrices);
+        //console.log('Stored Prices:', currentGoldPrices);
         return true;
     } catch (error) {
         //console.error('Error fetching gold prices:', error.message);
