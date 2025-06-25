@@ -21,11 +21,17 @@
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
 
-    <!-- Loading Screen -->
+    <!-- Optimized Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
-            <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
-            <p class="text-gray-600">กำลังโหลด...</p>
+            <div class="relative">
+                <i class="fas fa-coins text-6xl text-yellow-500 animate-spin mb-4"></i>
+                <div class="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full opacity-20 animate-ping"></div>
+            </div>
+            <p class="text-gray-600 animate-pulse">กำลังโหลด...</p>
+            <div class="mt-2 w-32 h-1 bg-gray-200 rounded-full mx-auto overflow-hidden">
+                <div id="loadingProgress" class="h-full bg-yellow-500 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+            </div>
         </div>
     </div>
 
@@ -101,7 +107,7 @@
                             <i class="fas fa-tag mr-1"></i>ราคาต่อบาท
                         </label>
                         <input type="number" id="buyPrice" step="0.01" min="1" placeholder="กรุณากรอกราคา"
-                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500" readonly>
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500">
                     </div>
 
                     <!-- Total -->
@@ -143,6 +149,60 @@
         let userData = {};
         let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let walletData = { balance: 0, transactions: [] };
+
+        // Loading Progress Management
+        class LoadingManager {
+            constructor() {
+                this.progress = 0;
+                this.progressBar = document.getElementById('loadingProgress');
+                this.steps = [
+                    { name: 'LIFF初期化', weight: 20 },
+                    { name: 'ユーザー情報取得', weight: 20 },
+                    { name: '金価格取得', weight: 30 },
+                    { name: 'ウォレット情報取得', weight: 20 },
+                    { name: 'UI初期化', weight: 10 }
+                ];
+                this.currentStep = 0;
+            }
+
+            updateProgress(stepIndex, stepProgress = 100) {
+                const completedWeight = this.steps.slice(0, stepIndex).reduce((sum, step) => sum + step.weight, 0);
+                const currentStepWeight = this.steps[stepIndex]?.weight || 0;
+                const currentStepProgress = (currentStepWeight * stepProgress) / 100;
+                
+                this.progress = Math.min(100, completedWeight + currentStepProgress);
+                this.progressBar.style.width = `${this.progress}%`;
+            }
+
+            nextStep() {
+                this.currentStep++;
+                this.updateProgress(this.currentStep, 0);
+            }
+
+            complete() {
+                this.progress = 100;
+                this.progressBar.style.width = '100%';
+                
+                // Smooth transition to hide loading screen
+                setTimeout(() => {
+                    document.getElementById('loading').style.opacity = '0';
+                    setTimeout(() => {
+                        document.getElementById('loading').classList.add('hidden');
+                        document.getElementById('app').classList.remove('hidden');
+                        // Animate app entrance
+                        document.getElementById('app').style.opacity = '0';
+                        document.getElementById('app').style.transform = 'translateY(20px)';
+                        setTimeout(() => {
+                            document.getElementById('app').style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                            document.getElementById('app').style.opacity = '1';
+                            document.getElementById('app').style.transform = 'translateY(0)';
+                        }, 50);
+                    }, 300);
+                }, 200);
+            }
+        }
+
+        const loadingManager = new LoadingManager();
 
         // Go back function
         function goBack() {
@@ -371,9 +431,10 @@
             }
         }
 
-        // Load Wallet Data
+        // Optimized Parallel Loading Functions
         async function loadWalletData() {
             try {
+                loadingManager.updateProgress(3, 50);
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
                 const data = await response.json();
                 if (data.success) {
@@ -381,19 +442,80 @@
                     document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
                     calculateBuyTotal(); // Update button state
                 }
+                loadingManager.updateProgress(3, 100);
             } catch (error) {
                 console.error('Error loading wallet data:', error);
+                loadingManager.updateProgress(3, 100);
             }
         }
 
-        // Initialize LIFF
+        // Optimized Gold Price Fetching with Caching
+        async function fetchGoldPricesOptimized() {
+            try {
+                loadingManager.updateProgress(2, 20);
+                
+                // Try to get cached prices first (if available)
+                const cachedPrices = localStorage.getItem('goldPrices');
+                const cacheTime = localStorage.getItem('goldPricesCacheTime');
+                const now = Date.now();
+                
+                // Use cache if less than 5 minutes old
+                if (cachedPrices && cacheTime && (now - parseInt(cacheTime)) < 300000) {
+                    window.currentGoldPrices = JSON.parse(cachedPrices);
+                    loadingManager.updateProgress(2, 100);
+                    return true;
+                }
+                
+                loadingManager.updateProgress(2, 40);
+                
+                // Fetch fresh prices
+                const pricesFetched = await fetchGoldPrices();
+                
+                loadingManager.updateProgress(2, 80);
+                
+                // Cache the new prices
+                if (pricesFetched && window.currentGoldPrices) {
+                    localStorage.setItem('goldPrices', JSON.stringify(window.currentGoldPrices));
+                    localStorage.setItem('goldPricesCacheTime', now.toString());
+                }
+                
+                loadingManager.updateProgress(2, 100);
+                return pricesFetched;
+            } catch (error) {
+                console.error('Error fetching gold prices:', error);
+                loadingManager.updateProgress(2, 100);
+                return false;
+            }
+        }
+
+        // Initialize LIFF with optimized loading
         window.onload = async function() {
             try {
+                loadingManager.updateProgress(0, 50);
+                
                 await liff.init({ liffId: LIFF_ID });
+                loadingManager.updateProgress(0, 100);
+                loadingManager.nextStep();
+                
                 if (liff.isLoggedIn()) {
-                    const pricesFetched = await fetchGoldPrices();
-                    console.log('Initial price fetch successful:', pricesFetched);
-                    initApp();
+                    // Run operations in parallel where possible
+                    const initPromises = [
+                        initUserProfile(),
+                        fetchGoldPricesOptimized()
+                    ];
+                    
+                    await Promise.all(initPromises);
+                    
+                    // Load wallet data (depends on user profile)
+                    await loadWalletData();
+                    loadingManager.nextStep();
+                    
+                    // Initialize UI
+                    initializeUI();
+                    loadingManager.nextStep();
+                    
+                    // Complete loading
+                    loadingManager.complete();
                 } else {
                     liff.login();
                 }
@@ -403,30 +525,52 @@
             }
         };
 
-        // Initialize App
-        async function initApp() {
+        // Optimized User Profile Loading
+        async function initUserProfile() {
             try {
+                loadingManager.updateProgress(1, 50);
                 const profile = await liff.getProfile();
                 userData = {
                     userId: profile.userId,
                     name: profile.displayName,
                     picture: profile.pictureUrl
                 };
-                window.userData = userData; // Make available globally
-                await loadWalletData();
-                updateBuyPrice();
-                updatePriceDisplay();
-                
-                // Set up event listeners
-                document.getElementById('buyAmount').addEventListener('input', calculateBuyTotal);
-                document.getElementById('buyPrice').addEventListener('input', calculateBuyTotal);
-                
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
+                window.userData = userData;
+                loadingManager.updateProgress(1, 100);
+                loadingManager.nextStep();
             } catch (error) {
-                console.error('Error initializing app:', error);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+                console.error('Error loading user profile:', error);
+                loadingManager.updateProgress(1, 100);
+                loadingManager.nextStep();
             }
+        }
+
+        // Initialize UI Components
+        function initializeUI() {
+            loadingManager.updateProgress(4, 30);
+            
+            updateBuyPrice();
+            updatePriceDisplay();
+            
+            loadingManager.updateProgress(4, 60);
+            
+            // Set up event listeners with debouncing
+            const debounce = (func, wait) => {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            };
+            
+            document.getElementById('buyAmount').addEventListener('input', debounce(calculateBuyTotal, 300));
+            document.getElementById('buyPrice').addEventListener('input', debounce(calculateBuyTotal, 300));
+            
+            loadingManager.updateProgress(4, 100);
         }
     </script>
 </body>
