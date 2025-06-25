@@ -280,18 +280,10 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
-        // Global Variables
-        let userData = {};
-        let walletData = { balance: 0 };
-
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
-
+        // Configuration
+        const LIFF_ID = 'your-liff-id-here';
+        const API_URL = 'https://script.google.com/macros/s/your-script-id/exec';
         
         // Bank accounts mapping
         const BANK_ACCOUNTS = {
@@ -305,6 +297,9 @@
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
 
+        // Global Variables
+        let userData = {};
+        let walletData = { balance: 0 };
 
         // Utility Functions
         function formatCurrency(amount) {
@@ -400,7 +395,7 @@
             updateProcessSteps(2);
         }
 
-        // Submit top-up request - แก้ไขให้ใช้ FormData เพื่อแก้ปัญหา CORS
+        // Submit top-up request - เพิ่มโหมดทดสอบ
         async function submitTopup() {
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
@@ -443,6 +438,68 @@
                     minute: '2-digit',
                     second: '2-digit'
                 });
+
+                // ตรวจสอบว่ามี API_URL จริงหรือไม่
+                if (API_URL.includes('YOUR_ACTUAL_SCRIPT_ID')) {
+                    // โหมดทดสอบ - จำลองการส่งข้อมูลสำเร็จ
+                    console.log('Demo mode - simulating successful submission');
+                    
+                    // จำลองการรอ API
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // บันทึกรายการในประวัติ
+                    const transactionRecord = {
+                        id: transactionId,
+                        type: 'topup',
+                        amount: amount,
+                        bank: bank,
+                        account: account,
+                        dateTime: dateTime,
+                        status: 'pending',
+                        filename: slipFile.name
+                    };
+                    
+                    saveToLocalHistory(transactionRecord);
+                    
+                    // แจ้งผลสำเร็จ (โหมดทดสอบ)
+                    await Swal.fire({
+                        icon: 'success',
+                        title: '🎉 ทดสอบส่งคำขอเติมเงินสำเร็จ!',
+                        html: `
+                            <div class="text-center space-y-3">
+                                <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                    <p class="text-yellow-800 font-semibold">⚠️ โหมดทดสอบ</p>
+                                    <p class="text-sm text-yellow-700">นี่เป็นการทดสอบระบบ ข้อมูลไม่ได้ส่งไปเซิร์ฟเวอร์จริง</p>
+                                </div>
+                                <div class="bg-green-50 p-4 rounded-lg">
+                                    <p class="text-lg font-semibold text-green-800">รายละเอียดการเติมเงิน</p>
+                                    <hr class="my-2">
+                                    <div class="text-left space-y-1">
+                                        <p><strong>เลขที่รายการ:</strong> ${transactionId}</p>
+                                        <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
+                                        <p><strong>ธนาคาร:</strong> ${bank}</p>
+                                        <p><strong>เลขที่บัญชี:</strong> ${account}</p>
+                                        <p><strong>วันที่:</strong> ${dateTime}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <p class="text-sm text-blue-800">📝 เพื่อใช้งานจริง ต้องตั้งค่า Google Apps Script</p>
+                                    <p class="text-sm text-blue-800">🔗 แล้วใส่ URL ใน API_URL</p>
+                                </div>
+                            </div>
+                        `,
+                        confirmButtonText: 'กลับหน้าหลัก',
+                        confirmButtonColor: '#10b981',
+                        allowOutsideClick: false
+                    });
+                    
+                    // กลับไปหน้าหลัก
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                    
+                    return; // ออกจากฟังก์ชันในโหมดทดสอบ
+                }
 
                 // สร้าง FormData แทน JSON เพื่อแก้ปัญหา CORS
                 const formData = new FormData();
@@ -562,33 +619,75 @@
             } catch (error) {
                 console.error('Topup error:', error);
                 
-                let errorMessage = handleNetworkError(error);
-                
                 // ตรวจสอบข้อผิดพลาดเฉพาะ
-                if (error.message.includes('CORS')) {
-                    errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
-                } else if (error.message.includes('NetworkError')) {
-                    errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
-                }
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'เกิดข้อผิดพลาด',
-                    html: `
-                        <div class="text-left">
-                            <p class="mb-3">${errorMessage}</p>
-                            <div class="bg-gray-50 p-3 rounded text-sm">
-                                <p class="font-semibold mb-1">ข้อมูลที่กรอก:</p>
-                                <p>• จำนวนเงิน: ฿${formatCurrency(amount)}</p>
-                                <p>• ธนาคาร: ${bank}</p>
-                                <p>• ไฟล์สลิป: ${slipFile.name}</p>
+                if (error.message.includes('404') || API_URL.includes('YOUR_ACTUAL_SCRIPT_ID')) {
+                    // แสดงคำแนะนำการตั้งค่า Google Apps Script
+                    Swal.fire({
+                        icon: 'info',
+                        title: '🔧 ต้องตั้งค่า Google Apps Script',
+                        html: `
+                            <div class="text-left space-y-3">
+                                <p class="text-gray-700">เพื่อใช้งานระบบเติมเงินจริง ต้องทำตามขั้นตอนเหล่านี้:</p>
+                                
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <h4 class="font-semibold text-blue-800 mb-2">📝 ขั้นตอนการตั้งค่า:</h4>
+                                    <ol class="text-sm text-blue-700 space-y-1">
+                                        <li>1. ไปที่ <a href="https://script.google.com" target="_blank" class="underline">script.google.com</a></li>
+                                        <li>2. สร้าง Project ใหม่</li>
+                                        <li>3. คัดลอกโค้ด Google Apps Script</li>
+                                        <li>4. Deploy เป็น Web App</li>
+                                        <li>5. คัดลอก URL มาใส่ใน API_URL</li>
+                                    </ol>
+                                </div>
+                                
+                                <div class="bg-yellow-50 p-4 rounded-lg">
+                                    <p class="text-sm text-yellow-700">
+                                        <strong>ปัจจุบัน:</strong> ระบบกำลังทำงานในโหมดทดสอบ<br>
+                                        ข้อมูลจะถูกบันทึกเฉพาะในเครื่องของคุณเท่านั้น
+                                    </p>
+                                </div>
+                                
+                                <div class="bg-gray-50 p-3 rounded text-sm">
+                                    <p class="font-semibold mb-1">ข้อมูลที่กรอก:</p>
+                                    <p>• จำนวนเงิน: ฿${formatCurrency(amount)}</p>
+                                    <p>• ธนาคาร: ${bank}</p>
+                                    <p>• ไฟล์สลิป: ${slipFile.name}</p>
+                                </div>
                             </div>
-                            <p class="mt-3 text-sm text-gray-600">ข้อมูลของคุณได้ถูกบันทึกไว้ สามารถลองส่งใหม่ได้</p>
-                        </div>
-                    `,
-                    confirmButtonColor: '#ef4444',
-                    confirmButtonText: 'ลองใหม่'
-                });
+                        `,
+                        confirmButtonColor: '#3b82f6',
+                        confirmButtonText: 'เข้าใจแล้ว',
+                        footer: '<a href="https://script.google.com" target="_blank" class="text-blue-600 underline">เปิด Google Apps Script</a>'
+                    });
+                } else {
+                    // ข้อผิดพลาดอื่นๆ
+                    let errorMessage = handleNetworkError(error);
+                    
+                    if (error.message.includes('CORS')) {
+                        errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+                    } else if (error.message.includes('NetworkError')) {
+                        errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
+                    }
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'เกิดข้อผิดพลาด',
+                        html: `
+                            <div class="text-left">
+                                <p class="mb-3">${errorMessage}</p>
+                                <div class="bg-gray-50 p-3 rounded text-sm">
+                                    <p class="font-semibold mb-1">ข้อมูลที่กรอก:</p>
+                                    <p>• จำนวนเงิน: ฿${formatCurrency(amount)}</p>
+                                    <p>• ธนาคาร: ${bank}</p>
+                                    <p>• ไฟล์สลิป: ${slipFile.name}</p>
+                                </div>
+                                <p class="mt-3 text-sm text-gray-600">ข้อมูลของคุณได้ถูกบันทึกไว้ สามารถลองส่งใหม่ได้</p>
+                            </div>
+                        `,
+                        confirmButtonColor: '#ef4444',
+                        confirmButtonText: 'ลองใหม่'
+                    });
+                }
             } finally {
                 // Reset button state
                 submitBtn.disabled = false;
