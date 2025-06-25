@@ -1,24 +1,4 @@
-// Helper functions (สำหรับกรณีที่ไม่มี utils.js)
-        function formatNumber(num) {
-            if (typeof window.formatNumber === 'function') {
-                return window.formatNumber(num);
-            }
-            return parseFloat(num || 0).toFixed(2);
-        }
-
-        function formatCurrency(num) {
-            if (typeof window.formatCurrency === 'function') {
-                return window.formatCurrency(num);
-            }
-            return parseFloat(num || 0).toLocaleString('th-TH', { minimumFractionDigits: 2 });
-        }
-
-        // Debug function สำหรับตรวจสอบการเชื่อมต่อ
-        function checkConnection() {
-            console.log('=== Connection Check ===');
-            console.log('API_URL:', typeof API_URL !== 'undefined' ? API_URL : 'NOT DEFINED');
-            console.log('LIFF_ID:', typeof LIFF_ID !== 'undefined' ? LIFF_ID : 'NOT DEFINED');
-            console.log('GRAMS_PER_BAHT:', typeof GRAMS_PER_<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
