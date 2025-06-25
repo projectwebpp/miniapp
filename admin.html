@@ -218,24 +218,19 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Configuration - ปรับ URL ตามของคุณ
+        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+        const LIFF_ID = 'YOUR_LIFF_ID_HERE';
+
         // Global Variables
         let userData = {};
-        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let pendingTransactions = [];
         let pendingWithdrawals = [];
         let allTransactions = [];
         let systemStats = {};
         let currentTab = 'pending';
 
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
-
- 
         // Utility Functions
         function formatCurrency(amount) {
             return parseFloat(amount).toLocaleString('th-TH', {
@@ -1080,7 +1075,19 @@
                         errorCount++;
                         console.error('Error rejecting withdrawal:', error);
                     }
-                }        }
+                }
+
+                Swal.close();
+                
+                if (errorCount === 0) {
+                    Swal.fire('สำเร็จ!', `ปฏิเสธถอนเงินทั้งหมด ${successCount} รายการเรียบร้อย`, 'success');
+                } else {
+                    Swal.fire('เสร็จสิ้น', `ปฏิเสธสำเร็จ ${successCount} รายการ, ล้มเหลว ${errorCount} รายการ`, 'info');
+                }
+
+                loadPendingWithdrawals();
+            }
+        }        }
                     } catch (error) {
                         errorCount++;
                         console.error('Error rejecting withdrawal:', error);
