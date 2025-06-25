@@ -274,6 +274,9 @@
                         } else if (transaction.type === 'อนุมัติถอนเงิน'|| transaction.type === 'อนุมัติเติมเงิน' ) {
                             typeColor = 'text-green-600';
                             typeIcon = 'fas fa-check-circle';
+                        } else if (transaction.type === 'ซื้อทอง' ) {
+                            typeColor = 'text-blue-600';
+                            typeIcon = 'fas fa-coins';
                         } else {
                             typeColor = 'text-red-600';
                             typeIcon = 'fa-minus-circle';
