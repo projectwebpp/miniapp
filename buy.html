@@ -4,12 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ซื้อทอง - ระบบออมทอง</title>
-       <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        .hidden {
+            display: none;
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .5;
+            }
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -18,7 +33,7 @@
             <i class="fas fa-arrow-left"></i>
         </button>
         <h1 class="page-title">ซื้อทอง</h1>
-        <div class="w-10"></div> <!-- Spacer for center alignment -->
+        <div class="w-10"></div>
     </div>
 
     <!-- Loading Screen -->
@@ -132,11 +147,16 @@
             </div>
         </div>
     </div>
-
-    <!-- Load JavaScript -->
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
+        
+        const GRAMS_PER_BAHT = 15.2;
+        // Global Variables
+        let userData = {};
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
+        let walletData = { balance: 0, transactions: [] };
+
         // Simulate loading progress
         document.addEventListener('DOMContentLoaded', function() {
             let progress = 0;
@@ -152,22 +172,301 @@
             }, 30);
         });
 
+        // Go back function
         function goBack() {
             window.history.back();
         }
 
-        // Placeholder functions
+        // Validation functions
+        function validateBuyInput() {
+            const amount = parseFloat(document.getElementById('buyAmount').value);
+            const price = parseFloat(document.getElementById('buyPrice').value);
+            if (!amount || amount <= 0) {
+                return { valid: false, message: 'กรุณากรอกจำนวนทองที่ต้องการซื้อ' };
+            }
+            if (amount < 0.01) {
+                return { valid: false, message: 'จำนวนทองต้องมากกว่า 0.01 กรัม' };
+            }
+            if (!price || price <= 0) {
+                return { valid: false, message: 'กรุณากรอกราคาทองที่ถูกต้อง' };
+            }
+            if (price < 1) {
+                return { valid: false, message: 'ราคาทองต้องมากกว่า 1 บาท' };
+            }
+            return { valid: true };
+        }
+
+        // Update price based on gold type
         function updateBuyPrice() {
-            console.log("Update buy price");
+            const goldType = document.getElementById('buyGoldType').value;
+            const buyPriceInput = document.getElementById('buyPrice');
+            const price = currentGoldPrices[goldType]?.buyPrice || 0;
+            console.log(`Updating buy price for ${goldType}: ${price}`);
+            buyPriceInput.value = price > 0 ? formatNumber(price) : '';
+            buyPriceInput.placeholder = price > 0 ? 'กรุณากรอกราคา' : 'กรุณากรอกราคา (API ไม่มีข้อมูล)';
+            calculateBuyTotal();
+            updatePriceDisplay();
         }
 
+        // Update amount based on unit selection
         function updateBuyAmount() {
-            console.log("Update buy amount");
+            const unit = document.getElementById('buyUnit').value;
+            const amountInput = document.getElementById('buyAmount');
+            if (unit && unit !== 'custom') {
+                amountInput.value = unit;
+                amountInput.readOnly = true;
+            } else {
+                amountInput.readOnly = false;
+                if (unit !== 'custom') {
+                    amountInput.value = '';
+                }
+            }
+            calculateBuyTotal();
         }
 
-        function buyGold() {
-            console.log("Buy gold");
+        // Calculate total in real-time
+        function calculateBuyTotal() {
+            const amount = parseFloat(document.getElementById('buyAmount').value) || 0;
+            const pricePerBaht = parseFloat(document.getElementById('buyPrice').value) || 0;
+            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const total = bahtEquivalent * pricePerBaht;
+            document.getElementById('buyTotal').textContent = '฿' + formatCurrency(total);
+            updateButtonState(total);
         }
+
+        // Update button state
+        function updateButtonState(total) {
+            const buyButton = document.getElementById('buyButton');
+            if (total > walletData.balance) {
+                buyButton.disabled = true;
+                buyButton.className = 'flex-1 bg-gray-400 text-white py-3 rounded-lg font-semibold cursor-not-allowed';
+                buyButton.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ยอดเงินไม่พอ';
+            } else {
+                buyButton.disabled = false;
+                buyButton.className = 'flex-1 bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition btn-animate';
+                buyButton.innerHTML = '<i class="fas fa-shopping-cart mr-2"></i>ยืนยันการซื้อ';
+            }
+        }
+
+        // Update price display
+        function updatePriceDisplay() {
+            document.getElementById('barPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.buyPrice);
+            document.getElementById('ornamentPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.buyPrice);
+        }
+
+        // Update wallet balance
+        async function updateWallet(amount, description, status) {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'updateWallet');
+                formData.append('userId', userData.userId);
+                formData.append('amount', amount);
+                formData.append('description', description);
+                formData.append('status', status);
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('Error updating wallet:', data.message);
+                }
+            } catch (error) {
+                console.error('Error updating wallet:', error);
+            }
+        }
+
+        // Buy Gold function
+        async function buyGold() {
+            const validation = validateBuyInput();
+            if (!validation.valid) {
+                Swal.fire('ข้อผิดพลาด', validation.message, 'error');
+                return;
+            }
+            const amount = parseFloat(document.getElementById('buyAmount').value);
+            const pricePerBaht = parseFloat(document.getElementById('buyPrice').value);
+            const goldType = document.getElementById('buyGoldType').value;
+            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const total = bahtEquivalent * pricePerBaht;
+
+            if (walletData.balance < total) {
+                Swal.fire('ข้อผิดพลาด', 'ยอดเงินในกระเป๋าไม่เพียงพอ กรุณาเติมเงินก่อน', 'error');
+                return;
+            }
+
+            const result = await Swal.fire({
+                title: 'ยืนยันการซื้อ',
+                html: `
+                    <div class="text-left space-y-2">
+                        <p><strong>ประเภท:</strong> ${getGoldTypeText(goldType)}</p>
+                        <p><strong>จำนวน:</strong> ${getGoldUnitText(amount)}</p>
+                        <p><strong>ราคา:</strong> ฿${formatCurrency(pricePerBaht)}/บาท</p>
+                        <p class="text-lg"><strong>รวม:</strong> <span class="text-green-600">฿${formatCurrency(total)}</span></p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันการซื้อ',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#10b981'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        html: 'กำลังบันทึกรายการซื้อทอง',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    const formData = new FormData();
+                    formData.append('action', 'addTransaction');
+                    formData.append('userId', userData.userId);
+                    formData.append('userName', userData.name);
+                    formData.append('type', 'ซื้อ');
+                    formData.append('amount', amount);
+                    formData.append('price', pricePerBaht);
+                    formData.append('total', total);
+                    formData.append('goldType', goldType);
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        const newBalance = currentGoldData.totalGold + amount;
+                        await updateWallet(-total, 'ซื้อทอง', 'สำเร็จ');
+                        await sendFlexMessage('ซื้อ', amount, pricePerBaht, total, newBalance, goldType);
+
+                        await Swal.fire({
+                            icon: 'success',
+                            title: '🎉 ซื้อทองสำเร็จ!',
+                            html: `
+                                <div class="text-center space-y-3">
+                                    <div class="bg-green-50 p-4 rounded-lg">
+                                        <p class="text-lg font-semibold text-green-800">รายละเอียดการซื้อ</p>
+                                        <hr class="my-2">
+                                        <div class="text-left space-y-1">
+                                            <p><strong>ประเภท:</strong> ${getGoldTypeText(goldType)}</p>
+                                            <p><strong>จำนวน:</strong> ${getGoldUnitText(amount)}</p>
+                                            <p><strong>ราคา:</strong> ฿${formatCurrency(pricePerBaht)}/บาท</p>
+                                            <p class="text-lg"><strong>เงินที่จ่าย:</strong> <span class="text-green-600 font-bold">฿${formatCurrency(total)}</span></p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-yellow-50 p-4 rounded-lg">
+                                        <p class="text-sm text-yellow-800">🏆 ทองคงเหลือ: ${formatNumber(newBalance)} กรัม</p>
+                                        <p class="text-sm text-yellow-800">💰 เงินหักจากกระเป๋าเรียบร้อยแล้ว</p>
+                                    </div>
+                                </div>
+                            `,
+                            confirmButtonText: 'กลับหน้าหลัก',
+                            confirmButtonColor: '#10b981',
+                            allowOutsideClick: false
+                        });
+
+                        window.location.href = 'index.html';
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', data.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error buying gold:', error);
+                    Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                }
+            }
+        }
+
+        // Load Wallet Data
+        async function loadWalletData() {
+            try {
+                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const data = await response.json();
+                if (data.success) {
+                    walletData.balance = data.balance || 0;
+                    document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                    calculateBuyTotal();
+                }
+            } catch (error) {
+                console.error('Error loading wallet data:', error);
+            }
+        }
+
+        // Initialize LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                if (liff.isLoggedIn()) {
+                    const pricesFetched = await fetchGoldPrices();
+                    console.log('Initial price fetch successful:', pricesFetched);
+                    initApp();
+                } else {
+                    liff.login();
+                }
+            } catch (err) {
+                console.error('LIFF init failed:', err);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+            }
+        };
+
+        // Initialize App
+        async function initApp() {
+            try {
+                const profile = await liff.getProfile();
+                userData = {
+                    userId: profile.userId,
+                    name: profile.displayName,
+                    picture: profile.pictureUrl
+                };
+                window.userData = userData;
+                await loadWalletData();
+                updateBuyPrice();
+                updatePriceDisplay();
+
+                document.getElementById('buyAmount').addEventListener('input', calculateBuyTotal);
+                document.getElementById('buyPrice').addEventListener('input', calculateBuyTotal);
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+            }
+        }
+
+        // Placeholder for formatNumber, formatCurrency, getGoldTypeText, getGoldUnitText, fetchGoldPrices, sendFlexMessage
+        function formatNumber(num) {
+            return num.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,');
+        }
+
+        function formatCurrency(num) {
+            return num.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+        }
+
+        function getGoldTypeText(type) {
+            return type === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+        }
+
+        function getGoldUnitText(amount) {
+            return `${amount} กรัม`;
+        }
+
+        async function fetchGoldPrices() {
+            // Mock function to simulate fetching gold prices
+            currentGoldPrices = {
+                bar: { buyPrice: 25000 },
+                ornament: { buyPrice: 24500 }
+            };
+            return true;
+        }
+
+        async function sendFlexMessage(type, amount, price, total, balance, goldType) {
+            // Mock function to simulate sending a flex message
+            console.log('Sending flex message:', { type, amount, price, total, balance, goldType });
+            return true;
+        }
+
+
     </script>
 </body>
 </html>
