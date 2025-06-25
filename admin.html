@@ -218,24 +218,18 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Configuration - ปรับ URL ตามของคุณ
+        const API_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+        const LIFF_ID = 'YOUR_LIFF_ID_HERE';
+
         // Global Variables
         let userData = {};
-        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
-        let walletData = { balance: 0, transactions: [] };
         let pendingTransactions = [];
         let pendingWithdrawals = [];
         let allTransactions = [];
         let systemStats = {};
         let currentTab = 'pending';
-
-        // Go back function
-        function goBack() {
-            window.history.back();
-        }
-
 
         // Utility Functions
         function formatCurrency(amount) {
@@ -554,7 +548,7 @@
             document.getElementById('transactionModal').classList.add('hidden');
         }
 
-        // Approve withdrawal - ใช้ระบบใหม่
+        // Approve withdrawal - ใช้ FormData ตามแบบที่แนะนำ
         async function approveWithdrawal(transactionId, userId, date, amount) {
             const result = await Swal.fire({
                 title: 'ยืนยันการอนุมัติถอนเงิน',
@@ -571,33 +565,51 @@
 
             if (result.isConfirmed) {
                 try {
-                    const requestData = {
-                        action: 'approve',
-                        type: 'ถอนเงิน',
-                        transactionId: transactionId,
-                        userId: userId,
-                        date: date,
-                        amount: amount
-                    };
-
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestData)
+                    // แสดง loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        text: 'กรุณารอสักครู่',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
                     });
 
-                    const responseData = await response.json();
-                    console.log('Approve withdrawal response:', responseData);
+                    // สร้าง FormData
+                    const data = new FormData();
+                    data.append('action', 'approve');
+                    data.append('type', 'ถอนเงิน');
+                    data.append('transactionId', transactionId);
+                    data.append('userId', userId);
+                    data.append('date', date);
+                    data.append('amount', amount);
 
-                    if (responseData.success) {
-                        Swal.fire('สำเร็จ!', responseData.message || 'อนุมัติการถอนเงินเรียบร้อยแล้ว', 'success');
-                        closeTransactionModal();
-                        loadPendingWithdrawals();
-                    } else {
-                        throw new Error(responseData.message || 'ไม่สามารถอนุมัติได้');
-                    }
+                    // ส่งข้อมูลด้วย fetch
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: data
+                    })
+                    .then(res => res.text())
+                    .then(responseData => {
+                        console.log('Approve withdrawal response:', responseData);
+                        
+                        // ตรวจสอบ response (ปรับตามผลลัพธ์ที่ GS ส่งกลับมา)
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('อนุมัติ')) {
+                            
+                            Swal.fire('สำเร็จ!', 'อนุมัติการถอนเงินเรียบร้อยแล้ว', 'success');
+                            closeTransactionModal();
+                            loadPendingWithdrawals();
+                        } else {
+                            throw new Error('ไม่สามารถอนุมัติได้: ' + responseData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error approving withdrawal:', error);
+                        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถอนุมัติการถอนเงินได้', 'error');
+                    });
 
                 } catch (error) {
                     console.error('Error approving withdrawal:', error);
@@ -606,7 +618,7 @@
             }
         }
 
-        // Reject withdrawal - ใช้ระบบใหม่
+        // Reject withdrawal - ใช้ FormData ตามแบบที่แนะนำ
         async function rejectWithdrawal(transactionId, userId, date) {
             const { value: reason } = await Swal.fire({
                 title: 'เหตุผลในการปฏิเสธ',
@@ -620,33 +632,51 @@
 
             if (reason !== undefined) {
                 try {
-                    const requestData = {
-                        action: 'reject',
-                        type: 'ถอนเงิน',
-                        transactionId: transactionId,
-                        userId: userId,
-                        date: date,
-                        reason: reason || 'ไม่ระบุเหตุผล'
-                    };
-
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestData)
+                    // แสดง loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        text: 'กรุณารอสักครู่',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
                     });
 
-                    const responseData = await response.json();
-                    console.log('Reject withdrawal response:', responseData);
+                    // สร้าง FormData
+                    const data = new FormData();
+                    data.append('action', 'reject');
+                    data.append('type', 'ถอนเงิน');
+                    data.append('transactionId', transactionId);
+                    data.append('userId', userId);
+                    data.append('date', date);
+                    data.append('reason', reason || 'ไม่ระบุเหตุผล');
 
-                    if (responseData.success) {
-                        Swal.fire('สำเร็จ!', responseData.message || 'ปฏิเสธการถอนเงินเรียบร้อยแล้ว', 'success');
-                        closeTransactionModal();
-                        loadPendingWithdrawals();
-                    } else {
-                        throw new Error(responseData.message || 'ไม่สามารถปฏิเสธได้');
-                    }
+                    // ส่งข้อมูลด้วย fetch
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: data
+                    })
+                    .then(res => res.text())
+                    .then(responseData => {
+                        console.log('Reject withdrawal response:', responseData);
+                        
+                        // ตรวจสอบ response
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('ปฏิเสธ')) {
+                            
+                            Swal.fire('สำเร็จ!', 'ปฏิเสธการถอนเงินเรียบร้อยแล้ว', 'success');
+                            closeTransactionModal();
+                            loadPendingWithdrawals();
+                        } else {
+                            throw new Error('ไม่สามารถปฏิเสธได้: ' + responseData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error rejecting withdrawal:', error);
+                        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถปฏิเสธการถอนเงินได้', 'error');
+                    });
 
                 } catch (error) {
                     console.error('Error rejecting withdrawal:', error);
@@ -655,7 +685,7 @@
             }
         }
 
-        // Approve topup - ระบบเดิม
+        // Approve topup - ใช้ FormData ตามแบบที่แนะนำ
         async function approveTopup(userId, date, amount) {
             const result = await Swal.fire({
                 title: 'ยืนยันการอนุมัติ',
@@ -669,32 +699,50 @@
 
             if (result.isConfirmed) {
                 try {
-                    const requestData = {
-                        action: 'approve',
-                        type: 'เติมเงิน',
-                        userId: userId,
-                        date: date,
-                        amount: amount
-                    };
-
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestData)
+                    // แสดง loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        text: 'กรุณารอสักครู่',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
                     });
 
-                    const responseData = await response.json();
-                    console.log('Approve topup response:', responseData);
+                    // สร้าง FormData
+                    const data = new FormData();
+                    data.append('action', 'approve');
+                    data.append('type', 'เติมเงิน');
+                    data.append('userId', userId);
+                    data.append('date', date);
+                    data.append('amount', amount);
 
-                    if (responseData.success) {
-                        Swal.fire('สำเร็จ!', responseData.message || 'อนุมัติเติมเงินเรียบร้อยแล้ว', 'success');
-                        closeTransactionModal();
-                        loadPendingTransactions();
-                    } else {
-                        throw new Error(responseData.message || 'ไม่สามารถอนุมัติได้');
-                    }
+                    // ส่งข้อมูลด้วย fetch
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: data
+                    })
+                    .then(res => res.text())
+                    .then(responseData => {
+                        console.log('Approve topup response:', responseData);
+                        
+                        // ตรวจสอบ response
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('อนุมัติ')) {
+                            
+                            Swal.fire('สำเร็จ!', 'อนุมัติเติมเงินเรียบร้อยแล้ว', 'success');
+                            closeTransactionModal();
+                            loadPendingTransactions();
+                        } else {
+                            throw new Error('ไม่สามารถอนุมัติได้: ' + responseData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error approving topup:', error);
+                        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถอนุมัติการเติมเงินได้', 'error');
+                    });
 
                 } catch (error) {
                     console.error('Error approving topup:', error);
@@ -703,7 +751,7 @@
             }
         }
 
-        // Reject topup - ระบบเดิม
+        // Reject topup - ใช้ FormData ตามแบบที่แนะนำ
         async function rejectTopup(userId, date) {
             const { value: reason } = await Swal.fire({
                 title: 'เหตุผลในการปฏิเสธ',
@@ -717,32 +765,50 @@
 
             if (reason !== undefined) {
                 try {
-                    const requestData = {
-                        action: 'reject',
-                        type: 'เติมเงิน',
-                        userId: userId,
-                        date: date,
-                        reason: reason || 'ไม่ระบุเหตุผล'
-                    };
-
-                    const response = await fetch(API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestData)
+                    // แสดง loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        text: 'กรุณารอสักครู่',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
                     });
 
-                    const responseData = await response.json();
-                    console.log('Reject topup response:', responseData);
+                    // สร้าง FormData
+                    const data = new FormData();
+                    data.append('action', 'reject');
+                    data.append('type', 'เติมเงิน');
+                    data.append('userId', userId);
+                    data.append('date', date);
+                    data.append('reason', reason || 'ไม่ระบุเหตุผล');
 
-                    if (responseData.success) {
-                        Swal.fire('สำเร็จ!', responseData.message || 'ปฏิเสธเติมเงินเรียบร้อยแล้ว', 'success');
-                        closeTransactionModal();
-                        loadPendingTransactions();
-                    } else {
-                        throw new Error(responseData.message || 'ไม่สามารถปฏิเสธได้');
-                    }
+                    // ส่งข้อมูลด้วย fetch
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: data
+                    })
+                    .then(res => res.text())
+                    .then(responseData => {
+                        console.log('Reject topup response:', responseData);
+                        
+                        // ตรวจสอบ response
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('ปฏิเสธ')) {
+                            
+                            Swal.fire('สำเร็จ!', 'ปฏิเสธเติมเงินเรียบร้อยแล้ว', 'success');
+                            closeTransactionModal();
+                            loadPendingTransactions();
+                        } else {
+                            throw new Error('ไม่สามารถปฏิเสธได้: ' + responseData);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error rejecting topup:', error);
+                        Swal.fire('ข้อผิดพลาด', error.message || 'ไม่สามารถปฏิเสธการเติมเงินได้', 'error');
+                    });
 
                 } catch (error) {
                     console.error('Error rejecting topup:', error);
@@ -784,24 +850,25 @@
 
                 for (const transaction of pendingTransactions) {
                     try {
-                        const requestData = {
-                            action: 'approve',
-                            type: 'เติมเงิน',
-                            userId: transaction.userId,
-                            date: transaction.date,
-                            amount: transaction.amount
-                        };
+                        // สร้าง FormData
+                        const data = new FormData();
+                        data.append('action', 'approve');
+                        data.append('type', 'เติมเงิน');
+                        data.append('userId', transaction.userId);
+                        data.append('date', transaction.date);
+                        data.append('amount', transaction.amount);
 
+                        // ส่งข้อมูลด้วย fetch แบบ sync
                         const response = await fetch(API_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestData)
+                            method: "POST",
+                            body: data
                         });
 
-                        const responseData = await response.json();
-                        if (responseData.success) {
+                        const responseData = await response.text();
+                        
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('อนุมัติ')) {
                             successCount++;
                         } else {
                             errorCount++;
@@ -908,25 +975,26 @@
 
                 for (const withdrawal of pendingWithdrawals) {
                     try {
-                        const requestData = {
-                            action: 'approve',
-                            type: 'ถอนเงิน',
-                            transactionId: withdrawal.transactionId,
-                            userId: withdrawal.userId,
-                            date: withdrawal.date,
-                            amount: withdrawal.amount
-                        };
+                        // สร้าง FormData
+                        const data = new FormData();
+                        data.append('action', 'approve');
+                        data.append('type', 'ถอนเงิน');
+                        data.append('transactionId', withdrawal.transactionId);
+                        data.append('userId', withdrawal.userId);
+                        data.append('date', withdrawal.date);
+                        data.append('amount', withdrawal.amount);
 
+                        // ส่งข้อมูลด้วย fetch แบบ sync
                         const response = await fetch(API_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestData)
+                            method: "POST",
+                            body: data
                         });
 
-                        const responseData = await response.json();
-                        if (responseData.success) {
+                        const responseData = await response.text();
+                        
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('อนุมัติ')) {
                             successCount++;
                         } else {
                             errorCount++;
@@ -979,29 +1047,35 @@
 
                 for (const withdrawal of pendingWithdrawals) {
                     try {
-                        const requestData = {
-                            action: 'reject',
-                            type: 'ถอนเงิน',
-                            transactionId: withdrawal.transactionId,
-                            userId: withdrawal.userId,
-                            date: withdrawal.date,
-                            reason: reason || 'ไม่ระบุเหตุผล'
-                        };
+                        // สร้าง FormData
+                        const data = new FormData();
+                        data.append('action', 'reject');
+                        data.append('type', 'ถอนเงิน');
+                        data.append('transactionId', withdrawal.transactionId);
+                        data.append('userId', withdrawal.userId);
+                        data.append('date', withdrawal.date);
+                        data.append('reason', reason || 'ไม่ระบุเหตุผล');
 
+                        // ส่งข้อมูลด้วย fetch แบบ sync
                         const response = await fetch(API_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(requestData)
+                            method: "POST",
+                            body: data
                         });
 
-                        const responseData = await response.json();
-                        if (responseData.success) {
+                        const responseData = await response.text();
+                        
+                        if (responseData.includes('success') || 
+                            responseData.includes('สำเร็จ') || 
+                            responseData.includes('ปฏิเสธ')) {
                             successCount++;
                         } else {
                             errorCount++;
                         }
+                    } catch (error) {
+                        errorCount++;
+                        console.error('Error rejecting withdrawal:', error);
+                    }
+                }        }
                     } catch (error) {
                         errorCount++;
                         console.error('Error rejecting withdrawal:', error);
