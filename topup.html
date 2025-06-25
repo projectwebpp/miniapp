@@ -20,6 +20,7 @@
         <h1 class="page-title">เติมเงิน</h1>
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
+
     <!-- Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
@@ -27,6 +28,7 @@
             <p class="text-gray-600">กำลังโหลด...</p>
         </div>
     </div>
+
     <!-- Main Content -->
     <div id="app" class="hidden page-container p-4">
         <div class="max-w-md mx-auto">
@@ -47,6 +49,7 @@
                     </div>
                 </div>
             </div>
+
             <!-- Current Balance -->
             <div class="bg-white rounded-lg shadow p-4 mb-6 card-hover">
                 <div class="text-center">
@@ -54,12 +57,13 @@
                     <p id="currentBalance" class="text-2xl font-bold text-blue-600">฿0.00</p>
                 </div>
             </div>
+
             <!-- Top-up Form -->
             <div class="bg-white rounded-lg shadow p-6 card-hover">
                 <h2 class="text-xl font-bold mb-6 text-center">
                     <i class="fas fa-plus-circle mr-2 text-blue-500"></i>เติมเงินเข้ากระเป๋า
                 </h2>
-
+                
                 <div class="space-y-4">
                     <!-- Amount -->
                     <div>
@@ -70,6 +74,7 @@
                                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                         <p class="text-xs text-gray-500 mt-1">จำนวนเงินขั้นต่ำ 100 บาท</p>
                     </div>
+
                     <!-- Bank Selection -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -79,6 +84,7 @@
                             <!-- Options will be populated by JavaScript -->
                         </select>
                     </div>
+
                     <!-- Account Number -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
@@ -93,6 +99,7 @@
                         </div>
                         <p class="text-xs text-gray-500 mt-1">คลิกที่ไอคอนเพื่อคัดลอกเลขบัญชี</p>
                     </div>
+
                     <!-- Slip Upload -->
                     <div id="slipUploadSection">
                         <label class="block text-sm font-medium mb-2">
@@ -104,7 +111,7 @@
                             <p class="text-xs text-gray-500 mt-1">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
                         </label>
                         <input type="file" id="topupSlip" accept="image/jpeg,image/png" class="hidden">
-
+                        
                         <div id="filePreview" class="mt-3 hidden">
                             <p id="topupFileName" class="text-sm text-gray-600 mb-2"></p>
                             <img id="previewImage" src="" alt="Preview" class="file-preview mt-2 w-full max-h-48 object-cover rounded-lg">
@@ -113,6 +120,7 @@
                             </button>
                         </div>
                     </div>
+
                     <!-- Instructions -->
                     <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                         <h4 class="font-semibold text-yellow-800 mb-2">
@@ -126,6 +134,7 @@
                         </ol>
                     </div>
                 </div>
+
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-6">
                     <button id="submitTopupBtn" onclick="submitTopup()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed btn-animate">
@@ -139,6 +148,7 @@
             </div>
         </div>
     </div>
+
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
@@ -154,11 +164,11 @@
         // Update bank dropdowns in the UI
         function updateBankDropdowns() {
             const bankSelect = document.getElementById('topupBank');
-
+            
             if (bankSelect) {
                 // Clear existing options
                 bankSelect.innerHTML = '<option value="">-- เลือกธนาคาร --</option>';
-
+                
                 // Add new options based on BANK_ACCOUNTS
                 for (const [bankName, accountNumber] of Object.entries(BANK_ACCOUNTS)) {
                     const option = document.createElement('option');
@@ -173,7 +183,7 @@
         function updateAccountNumber() {
             const bankSelect = document.getElementById('topupBank');
             const accountNumberField = document.getElementById('topupAccountNumber');
-
+            
             if (bankSelect && accountNumberField) {
                 const selectedBank = bankSelect.value;
                 accountNumberField.value = BANK_ACCOUNTS[selectedBank] || '';
@@ -193,7 +203,7 @@
                     setTimeout(() => {
                         copyBtn.innerHTML = originalIcon;
                     }, 2000);
-
+                    
                     // Show toast notification
                     Swal.fire({
                         icon: 'success',
@@ -237,7 +247,7 @@
             updateProcessSteps(2);
         }
 
-        // Submit top-up request
+        // Submit top-up request - แก้ไขใหม่ตามตัวอย่างที่ให้มา
         async function submitTopup() {
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
@@ -249,105 +259,135 @@
                 Swal.fire('ผิดพลาด', 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ขั้นต่ำ 100 บาท)', 'error');
                 return;
             }
-
             if (!bank) {
                 Swal.fire('ผิดพลาด', 'กรุณาเลือกธนาคาร', 'error');
                 return;
             }
-
             if (!slipFile) {
                 Swal.fire('ผิดพลาด', 'กรุณาอัพโหลดสลิปโอนเงิน', 'error');
                 return;
             }
 
-            // Validate file type and size
-            if (!ALLOWED_FILE_TYPES.includes(slipFile.type)) {
-                Swal.fire('ผิดพลาด', 'ประเภทไฟล์ไม่ถูกต้อง รองรับเฉพาะ JPG และ PNG', 'error');
-                return;
-            }
-
-            if (slipFile.size > MAX_FILE_SIZE) {
-                Swal.fire('ผิดพลาด', 'ไฟล์มีขนาดใหญ่เกินไป (สูงสุด 5MB)', 'error');
-                return;
-            }
-
             // Show loading
-            const submitBtn = document.getElementById('submitTopupBtn');
-            submitBtn.disabled = true;
-            document.getElementById('submitSpinner').style.display = 'inline-block';
-            document.getElementById('submitText').textContent = 'กำลังอัพโหลด...';
+            Swal.fire({
+                title: 'กำลังบันทึก...',
+                text: 'กรุณารอสักครู่',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
 
             try {
-                // Convert file to Base64
-                const base64 = await fileToBase64(slipFile);
+                // Use FileReader like in the example
+                let fr = new FileReader();
+                fr.addEventListener('loadend', () => {
+                    let res = fr.result;
+                    let spt = res.split("base64,")[1];
+                    
+                    // Prepare payload using the same structure as example
+                    let obj = {
+                        action: 'topup',
+                        userId: userData.userId,
+                        amount: amount,
+                        bank: bank,
+                        account: account,
+                        base64: spt,
+                        type: slipFile.type,
+                        name: slipFile.name
+                    };
 
-                // Prepare payload
-                const payload = {
-                    action: 'topup',
-                    userId: userData.userId,
-                    amount: amount,
-                    bank: bank,
-                    account: account,
-                    slip: base64,
-                    filename: slipFile.name,
-                    type: slipFile.type
-                };
-
-                // Send data to server
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    await Swal.fire({
-                        icon: 'success',
-                        title: '🎉 เติมเงินสำเร็จ!',
-                        html: `
-                            <div class="text-center space-y-3">
-                                <div class="bg-green-50 p-4 rounded-lg">
-                                    <p class="text-lg font-semibold text-green-800">รายละเอียดการเติมเงิน</p>
-                                    <hr class="my-2">
-                                    <div class="text-left space-y-1">
-                                        <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
-                                        <p><strong>ธนาคาร:</strong> ${bank}</p>
-                                        <p><strong>เลขที่บัญชี:</strong> ${account}</p>
+                    // Send data using the same method as example (without Content-Type header)
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: JSON.stringify(obj)
+                    })
+                    .then(r => r.text())
+                    .then(data => {
+                        console.log('Response:', data);
+                        
+                        // ปิด Loading และแสดงข้อความสำเร็จ
+                        Swal.fire({
+                            icon: 'success',
+                            title: '🎉 เติมเงินสำเร็จ!',
+                            html: `
+                                <div class="text-center space-y-3">
+                                    <div class="bg-green-50 p-4 rounded-lg">
+                                        <p class="text-lg font-semibold text-green-800">รายละเอียดการเติมเงิน</p>
+                                        <hr class="my-2">
+                                        <div class="text-left space-y-1">
+                                            <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
+                                            <p><strong>ธนาคาร:</strong> ${bank}</p>
+                                            <p><strong>เลขที่บัญชี:</strong> ${account}</p>
+                                        </div>
+                                    </div>
+                                    <div class="bg-blue-50 p-4 rounded-lg">
+                                        <p class="text-sm text-blue-800">💰 เงินจะเข้าบัญชีภายใน 5-10 นาที</p>
+                                        <p class="text-sm text-blue-800">📱 คุณจะได้รับการแจ้งเตือนผ่าน LINE</p>
                                     </div>
                                 </div>
-                                <div class="bg-blue-50 p-4 rounded-lg">
-                                    <p class="text-sm text-blue-800">💰 เงินจะเข้าบัญชีภายใน 5-10 นาที</p>
-                                    <p class="text-sm text-blue-800">📱 คุณจะได้รับการแจ้งเตือนผ่าน LINE</p>
-                                </div>
-                                ${result.slipUrl ? `
-                                <div class="bg-gray-50 p-4 rounded-lg">
-                                    <p class="text-sm text-gray-700 mb-2">สลิปที่อัพโหลด:</p>
-                                    <img src="${result.slipUrl}" alt="Slip" class="max-w-full h-32 object-contain mx-auto rounded border">
-                                </div>
-                                ` : ''}
-                            </div>
-                        `,
-                        confirmButtonText: 'กลับหน้าหลัก',
-                        confirmButtonColor: '#10b981',
-                        allowOutsideClick: false
+                            `,
+                            confirmButtonText: 'กลับหน้าหลัก',
+                            confirmButtonColor: '#10b981',
+                            allowOutsideClick: false
+                        });
+                        
+                        window.location.href = 'index.html';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message
+                        });
                     });
+                });
 
-                    window.location.href = 'index.html';
+                if (slipFile) {
+                    fr.readAsDataURL(slipFile);
                 } else {
-                    throw new Error(result.message || 'ไม่สามารถเติมเงินได้');
+                    // กรณีไม่มีไฟล์รูปภาพ (แต่ในกรณีนี้เราได้ validate แล้วว่าต้องมีไฟล์)
+                    let obj = {
+                        action: 'topup',
+                        userId: userData.userId,
+                        amount: amount,
+                        bank: bank,
+                        account: account,
+                        base64: null,
+                        type: null,
+                        name: null
+                    };
+                    
+                    fetch(API_URL, {
+                        method: "POST",
+                        body: JSON.stringify(obj)
+                    })
+                    .then(r => r.text())
+                    .then(data => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'บันทึกสำเร็จ!',
+                            text: 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        console.log(data);
+                        window.location.href = 'index.html';
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'เกิดข้อผิดพลาด',
+                            text: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message
+                        });
+                        console.error('Error:', error);
+                    });
                 }
+
             } catch (error) {
                 console.error('Error:', error);
                 Swal.fire('ผิดพลาด', error.message || 'เกิดข้อผิดพลาดในการเติมเงิน', 'error');
-            } finally {
-                // Reset button state
-                submitBtn.disabled = false;
-                document.getElementById('submitSpinner').style.display = 'none';
-                document.getElementById('submitText').textContent = 'ยืนยันการเติมเงิน';
             }
         }
 
@@ -406,6 +446,7 @@
                 document.getElementById('topupAmount').addEventListener('input', function() {
                     const amount = parseFloat(this.value) || 0;
                     const submitBtn = document.getElementById('submitTopupBtn');
+
                     if (amount < 100) {
                         submitBtn.disabled = true;
                         this.style.borderColor = '#ef4444';
@@ -474,6 +515,7 @@
                     e.preventDefault();
                     fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
                     fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
+
                     if (e.dataTransfer.files.length > 0) {
                         const file = e.dataTransfer.files[0];
 
