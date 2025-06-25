@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
@@ -41,10 +42,14 @@
                     </div>
                     <div id="step2" class="step">
                         <div class="step-number">2</div>
-                        <div class="step-text">อัพโหลดสลิป</div>
+                        <div class="step-text">สแกน QR Code</div>
                     </div>
                     <div id="step3" class="step">
                         <div class="step-number">3</div>
+                        <div class="step-text">อัพโหลดสลิป</div>
+                    </div>
+                    <div id="step4" class="step">
+                        <div class="step-number">4</div>
                         <div class="step-text">ยืนยันการเติมเงิน</div>
                     </div>
                 </div>
@@ -55,6 +60,59 @@
                 <div class="text-center">
                     <p class="text-gray-500 text-sm mb-1">ยอดเงินปัจจุบัน</p>
                     <p id="currentBalance" class="text-2xl font-bold text-blue-600">฿0.00</p>
+                </div>
+            </div>
+
+            <!-- QR Code Timer Section -->
+            <div id="qrTimerSection" class="bg-white rounded-lg shadow p-6 mb-6 card-hover hidden">
+                <div class="text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-clock text-3xl text-orange-500 mb-2"></i>
+                        <p class="text-gray-600 text-sm mb-2">เวลาที่เหลือ</p>
+                        <div id="timerDisplay" class="text-4xl font-bold text-orange-600 mb-2">01:00</div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="timerProgress" class="bg-orange-500 h-2 rounded-full transition-all duration-1000" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500">กรุณาทำรายการให้เสร็จสิ้นภายในเวลาที่กำหนด</p>
+                </div>
+            </div>
+
+            <!-- QR Code Section -->
+            <div id="qrSection" class="bg-white rounded-lg shadow p-6 mb-6 card-hover hidden">
+                <div class="text-center">
+                    <h3 class="text-lg font-bold mb-4 text-gray-800">
+                        <i class="fas fa-qrcode mr-2 text-blue-500"></i>สแกน QR Code เพื่อโอนเงิน
+                    </h3>
+                    
+                    <!-- QR Code Display -->
+                    <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                        <canvas id="qrcode" class="mx-auto mb-4"></canvas>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <p><strong>ธนาคาร:</strong> <span id="qrBankName"></span></p>
+                            <p><strong>เลขที่บัญชี:</strong> <span id="qrAccountNumber"></span></p>
+                            <p><strong>จำนวนเงิน:</strong> <span id="qrAmount" class="text-lg font-bold text-blue-600"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- QR Instructions -->
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+                        <h4 class="font-semibold text-blue-800 mb-2">
+                            <i class="fas fa-info-circle mr-1"></i>วิธีการโอนเงิน
+                        </h4>
+                        <ol class="text-sm text-blue-700 space-y-1 text-left">
+                            <li>1. เปิดแอปธนาคารของคุณ</li>
+                            <li>2. เลือกโอนเงินผ่าน QR Code</li>
+                            <li>3. สแกน QR Code ด้านบน</li>
+                            <li>4. ตรวจสอบข้อมูลและยืนยันการโอน</li>
+                            <li>5. กลับมาอัพโหลดสลิปที่นี่</li>
+                        </ol>
+                    </div>
+
+                    <!-- Refresh QR Button -->
+                    <button onclick="refreshQR()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition btn-animate mb-4">
+                        <i class="fas fa-sync-alt mr-2"></i>สร้าง QR Code ใหม่
+                    </button>
                 </div>
             </div>
 
@@ -100,8 +158,15 @@
                         <p class="text-xs text-gray-500 mt-1">คลิกที่ไอคอนเพื่อคัดลอกเลขบัญชี</p>
                     </div>
 
+                    <!-- Generate QR Button -->
+                    <div id="generateQRSection">
+                        <button id="generateQRBtn" onclick="generateQRCode()" class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition btn-animate" disabled>
+                            <i class="fas fa-qrcode mr-2"></i>สร้าง QR Code สำหรับโอนเงิน
+                        </button>
+                    </div>
+
                     <!-- Slip Upload -->
-                    <div id="slipUploadSection">
+                    <div id="slipUploadSection" class="hidden">
                         <label class="block text-sm font-medium mb-2">
                             <i class="fas fa-upload mr-1"></i>อัพโหลดสลิปโอนเงิน
                         </label>
@@ -127,17 +192,19 @@
                             <i class="fas fa-info-circle mr-1"></i>วิธีการเติมเงิน
                         </h4>
                         <ol class="text-sm text-yellow-700 space-y-1">
-                            <li>1. โอนเงินไปยังบัญชีที่แสดงด้านบน</li>
-                            <li>2. อัพโหลดสลิปการโอนเงิน</li>
-                            <li>3. กดยืนยันการเติมเงิน</li>
-                            <li>4. รอการตรวจสอบ 5-10 นาที</li>
+                            <li>1. กรอกจำนวนเงินและเลือกธนาคาร</li>
+                            <li>2. กดสร้าง QR Code</li>
+                            <li>3. สแกน QR Code ด้วยแอปธนาคาร</li>
+                            <li>4. โอนเงินตามจำนวนที่ระบุ</li>
+                            <li>5. อัพโหลดสลิปการโอนเงิน</li>
+                            <li>6. กดยืนยันการเติมเงิน</li>
                         </ol>
                     </div>
                 </div>
 
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-6">
-                    <button id="submitTopupBtn" onclick="submitTopup()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed btn-animate">
+                    <button id="submitTopupBtn" onclick="submitTopup()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed btn-animate hidden">
                         <span id="submitText">ยืนยันการเติมเงิน</span>
                         <span id="submitSpinner" class="spinner"></span>
                     </button>
@@ -155,9 +222,28 @@
         // Global Variables
         let userData = {};
         let walletData = { balance: 0 };
+        let qrTimer = null;
+        let qrTimeLeft = 60; // 1 minute in seconds
+        let isQRActive = false;
+
+        // Mock bank accounts (replace with your actual bank accounts)
+        const BANK_ACCOUNTS = {
+            'กสิกรไทย': '1234567890',
+            'กรุงเทพ': '0987654321',
+            'ไทยพาณิชย์': '1122334455',
+            'กรุงไทย': '5566778899'
+        };
+
+        // File validation constants
+        const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+        // Mock API URL
+        const API_URL = 'https://your-api-endpoint.com/api';
 
         // Go back function
         function goBack() {
+            clearQRTimer();
             window.history.back();
         }
 
@@ -183,11 +269,17 @@
         function updateAccountNumber() {
             const bankSelect = document.getElementById('topupBank');
             const accountNumberField = document.getElementById('topupAccountNumber');
+            const generateQRBtn = document.getElementById('generateQRBtn');
             
             if (bankSelect && accountNumberField) {
                 const selectedBank = bankSelect.value;
                 accountNumberField.value = BANK_ACCOUNTS[selectedBank] || '';
-                updateProcessSteps(selectedBank ? 2 : 1);
+                
+                // Enable/disable QR generation button
+                const amount = parseFloat(document.getElementById('topupAmount').value) || 0;
+                generateQRBtn.disabled = !selectedBank || amount < 100;
+                
+                updateProcessSteps(selectedBank ? 1 : 1);
             }
         }
 
@@ -220,6 +312,142 @@
             }
         }
 
+        // Generate QR Code
+        function generateQRCode() {
+            const amount = parseFloat(document.getElementById('topupAmount').value);
+            const bank = document.getElementById('topupBank').value;
+            const account = document.getElementById('topupAccountNumber').value;
+
+            if (!amount || amount < 100) {
+                Swal.fire('ผิดพลาด', 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ขั้นต่ำ 100 บาท)', 'error');
+                return;
+            }
+            if (!bank) {
+                Swal.fire('ผิดพลาด', 'กรุณาเลือกธนาคาร', 'error');
+                return;
+            }
+
+            // Clear any existing timer
+            clearQRTimer();
+
+            // Generate QR Code data (PromptPay format)
+            const qrData = generatePromptPayQR(account, amount);
+
+            // Display QR Code
+            const canvas = document.getElementById('qrcode');
+            QrCode.toCanvas(canvas, qrData, { width: 200, margin: 2 }, function (error) {
+                if (error) {
+                    console.error('Error generating QR Code:', error);
+                    Swal.fire('ผิดพลาด', 'ไม่สามารถสร้าง QR Code ได้', 'error');
+                    return;
+                }
+
+                // Update QR display information
+                document.getElementById('qrBankName').textContent = bank;
+                document.getElementById('qrAccountNumber').textContent = account;
+                document.getElementById('qrAmount').textContent = '฿' + formatCurrency(amount);
+
+                // Show QR sections
+                document.getElementById('qrSection').classList.remove('hidden');
+                document.getElementById('qrTimerSection').classList.remove('hidden');
+                document.getElementById('slipUploadSection').classList.remove('hidden');
+                document.getElementById('submitTopupBtn').classList.remove('hidden');
+                document.getElementById('generateQRSection').classList.add('hidden');
+
+                // Update process steps
+                updateProcessSteps(2);
+
+                // Start timer
+                startQRTimer();
+
+                // Show success message
+                Swal.fire({
+                    icon: 'success',
+                    title: 'สร้าง QR Code สำเร็จ!',
+                    text: 'กรุณาสแกน QR Code ด้วยแอปธนาคารของคุณ',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            });
+        }
+
+        // Generate PromptPay QR Code data
+        function generatePromptPayQR(accountNumber, amount) {
+            // This is a simplified version - in real implementation, you'd need proper PromptPay format
+            const qrData = `promptpay://transfer?account=${accountNumber}&amount=${amount}`;
+            return qrData;
+        }
+
+        // Start QR Timer
+        function startQRTimer() {
+            isQRActive = true;
+            qrTimeLeft = 60; // Reset to 1 minute
+            
+            qrTimer = setInterval(() => {
+                qrTimeLeft--;
+                updateTimerDisplay();
+                
+                if (qrTimeLeft <= 0) {
+                    clearQRTimer();
+                    handleQRTimeout();
+                }
+            }, 1000);
+        }
+
+        // Clear QR Timer
+        function clearQRTimer() {
+            if (qrTimer) {
+                clearInterval(qrTimer);
+                qrTimer = null;
+            }
+            isQRActive = false;
+        }
+
+        // Update Timer Display
+        function updateTimerDisplay() {
+            const minutes = Math.floor(qrTimeLeft / 60);
+            const seconds = qrTimeLeft % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            document.getElementById('timerDisplay').textContent = timeString;
+            
+            // Update progress bar
+            const progressPercent = (qrTimeLeft / 60) * 100;
+            document.getElementById('timerProgress').style.width = `${progressPercent}%`;
+            
+            // Change color based on time left
+            const timerDisplay = document.getElementById('timerDisplay');
+            const progressBar = document.getElementById('timerProgress');
+            
+            if (qrTimeLeft <= 15) {
+                timerDisplay.className = 'text-4xl font-bold text-red-600 mb-2';
+                progressBar.className = 'bg-red-500 h-2 rounded-full transition-all duration-1000';
+            } else if (qrTimeLeft <= 30) {
+                timerDisplay.className = 'text-4xl font-bold text-orange-600 mb-2';
+                progressBar.className = 'bg-orange-500 h-2 rounded-full transition-all duration-1000';
+            }
+        }
+
+        // Handle QR Timeout
+        function handleQRTimeout() {
+            Swal.fire({
+                icon: 'warning',
+                title: 'หมดเวลา!',
+                text: 'QR Code หมดอายุแล้ว กำลังกลับสู่หน้าหลัก...',
+                timer: 3000,
+                showConfirmButton: false,
+                allowOutsideClick: false
+            }).then(() => {
+                window.location.href = 'index.html';
+            });
+        }
+
+        // Refresh QR Code
+        function refreshQR() {
+            clearQRTimer();
+            generateQRCode();
+        }
+
         // Function to update process steps
         function updateProcessSteps(step) {
             // Reset all steps
@@ -233,7 +461,7 @@
             }
 
             // Mark current step
-            if (step <= 3) {
+            if (step <= 4) {
                 document.getElementById(`step${step}`).classList.add('active');
             }
         }
@@ -244,10 +472,10 @@
             document.getElementById('filePreview').classList.add('hidden');
             document.getElementById('previewImage').src = '';
             document.getElementById('topupFileName').textContent = '';
-            updateProcessSteps(2);
+            updateProcessSteps(3);
         }
 
-        // Submit top-up request - แก้ไขใหม่ตามตัวอย่างที่ให้มา
+        // Submit top-up request
         async function submitTopup() {
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
@@ -267,6 +495,9 @@
                 Swal.fire('ผิดพลาด', 'กรุณาอัพโหลดสลิปโอนเงิน', 'error');
                 return;
             }
+
+            // Clear timer since transaction is being submitted
+            clearQRTimer();
 
             // Show loading
             Swal.fire({
@@ -330,9 +561,9 @@
                             confirmButtonText: 'กลับหน้าหลัก',
                             confirmButtonColor: '#10b981',
                             allowOutsideClick: false
+                        }).then(() => {
+                            window.location.href = 'index.html';
                         });
-                        
-                        window.location.href = 'index.html';
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -346,49 +577,20 @@
 
                 if (slipFile) {
                     fr.readAsDataURL(slipFile);
-                } else {
-                    // กรณีไม่มีไฟล์รูปภาพ (แต่ในกรณีนี้เราได้ validate แล้วว่าต้องมีไฟล์)
-                    let obj = {
-                        action: 'topup',
-                        userId: userData.userId,
-                        amount: amount,
-                        bank: bank,
-                        account: account,
-                        base64: null,
-                        type: null,
-                        name: null
-                    };
-                    
-                    fetch(API_URL, {
-                        method: "POST",
-                        body: JSON.stringify(obj)
-                    })
-                    .then(r => r.text())
-                    .then(data => {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'บันทึกสำเร็จ!',
-                            text: 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                        console.log(data);
-                       // window.location.href = 'index.html';
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'เกิดข้อผิดพลาด',
-                            text: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message
-                        });
-                        console.error('Error:', error);
-                    });
                 }
 
             } catch (error) {
                 console.error('Error:', error);
                 Swal.fire('ผิดพลาด', error.message || 'เกิดข้อผิดพลาดในการเติมเงิน', 'error');
             }
+        }
+
+        // Format currency
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
         }
 
         // Load Wallet Data
@@ -408,13 +610,13 @@
         // Initialize LIFF
         window.onload = async function() {
             try {
-                await liff.init({ liffId: LIFF_ID });
-                await fetchBankAccounts();
-                if (liff.isLoggedIn()) {
+                // Mock LIFF initialization for demo
+                // await liff.init({ liffId: LIFF_ID });
+                // if (liff.isLoggedIn()) {
                     initApp();
-                } else {
-                    liff.login();
-                }
+                // } else {
+                //     liff.login();
+                // }
             } catch (err) {
                 console.error('LIFF init failed:', err);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
@@ -424,11 +626,11 @@
         // Initialize App
         async function initApp() {
             try {
-                const profile = await liff.getProfile();
+                // Mock user data for demo
                 userData = {
-                    userId: profile.userId,
-                    name: profile.displayName,
-                    picture: profile.pictureUrl
+                    userId: 'demo_user_123',
+                    name: 'Demo User',
+                    picture: 'https://via.placeholder.com/150'
                 };
 
                 await loadWalletData();
@@ -445,15 +647,24 @@
                 // Real-time amount validation
                 document.getElementById('topupAmount').addEventListener('input', function() {
                     const amount = parseFloat(this.value) || 0;
-                    const submitBtn = document.getElementById('submitTopupBtn');
+                    const generateQRBtn = document.getElementById('generateQRBtn');
+                    const bank = document.getElementById('topupBank').value;
 
-                    if (amount < 100) {
-                        submitBtn.disabled = true;
-                        this.style.borderColor = '#ef4444';
+                    if (amount < 100 || !bank) {
+                        generateQRBtn.disabled = true;
+                        this.style.borderColor = amount < 100 ? '#ef4444' : '#d1d5db';
                     } else {
-                        submitBtn.disabled = false;
+                        generateQRBtn.disabled = false;
                         this.style.borderColor = '#10b981';
                     }
+                });
+
+                // Bank selection validation
+                document.getElementById('topupBank').addEventListener('change', function() {
+                    const amount = parseFloat(document.getElementById('topupAmount').value) || 0;
+                    const generateQRBtn = document.getElementById('generateQRBtn');
+
+                    generateQRBtn.disabled = amount < 100 || !this.value;
                 });
 
                 // File input change handler
@@ -488,7 +699,7 @@
                         // Show file preview
                         fileName.textContent = file.name;
                         filePreview.classList.remove('hidden');
-                        updateProcessSteps(3);
+                        updateProcessSteps(4);
 
                         // Show preview image
                         const reader = new FileReader();
@@ -496,6 +707,12 @@
                             previewImage.src = event.target.result;
                         };
                         reader.readAsDataURL(file);
+
+                        // Reset timer when user uploads slip (user activity detected)
+                        if (isQRActive) {
+                            clearQRTimer();
+                            startQRTimer();
+                        }
                     }
                 });
 
@@ -552,6 +769,23 @@
                     }
                 });
 
+                // Listen for user activity to reset timer
+                document.addEventListener('click', function() {
+                    if (isQRActive) {
+                        // User clicked something, reset timer
+                        clearQRTimer();
+                        startQRTimer();
+                    }
+                });
+
+                document.addEventListener('keydown', function() {
+                    if (isQRActive) {
+                        // User typed something, reset timer
+                        clearQRTimer();
+                        startQRTimer();
+                    }
+                });
+
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
             } catch (error) {
@@ -559,6 +793,166 @@
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
         }
+
+        // Add custom CSS for animations
+        const style = document.createElement('style');
+        style.textContent = `
+            .step {
+                display: flex;
+                align-items: center;
+                margin-bottom: 1rem;
+                transition: all 0.3s ease;
+            }
+
+            .step-number {
+                width: 2rem;
+                height: 2rem;
+                border-radius: 50%;
+                background-color: #e5e7eb;
+                color: #6b7280;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                margin-right: 0.75rem;
+                transition: all 0.3s ease;
+            }
+
+            .step-text {
+                font-weight: 500;
+                color: #6b7280;
+                transition: all 0.3s ease;
+            }
+
+            .step.active .step-number {
+                background-color: #3b82f6;
+                color: white;
+            }
+
+            .step.active .step-text {
+                color: #3b82f6;
+            }
+
+            .step.completed .step-number {
+                background-color: #10b981;
+                color: white;
+            }
+
+            .step.completed .step-text {
+                color: #10b981;
+            }
+
+            .btn-animate {
+                transition: all 0.2s ease;
+                transform: translateY(0);
+            }
+
+            .btn-animate:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+
+            .btn-animate:active {
+                transform: translateY(0);
+            }
+
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+
+            .card-hover:hover {
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                transform: translateY(-2px);
+            }
+
+            .spinner {
+                display: none;
+                width: 1rem;
+                height: 1rem;
+                border: 2px solid #ffffff;
+                border-top: 2px solid transparent;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-left: 0.5rem;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            .file-preview {
+                border: 2px solid #e5e7eb;
+                border-radius: 0.5rem;
+                padding: 0.5rem;
+            }
+
+            @media (max-width: 768px) {
+                .mobile-header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                }
+
+                .page-title {
+                    font-size: 1.25rem;
+                    font-weight: 600;
+                    flex: 1;
+                    text-align: center;
+                }
+
+                .back-btn {
+                    width: 2.5rem;
+                    height: 2.5rem;
+                    background-color: rgba(255, 255, 255, 0.2);
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .back-btn:hover {
+                    background-color: rgba(255, 255, 255, 0.3);
+                    transform: scale(1.05);
+                }
+
+                .page-container {
+                    padding-top: 1rem;
+                    min-height: calc(100vh - 80px);
+                }
+            }
+
+            .process-steps {
+                display: flex;
+                flex-direction: column;
+            }
+
+            @media (min-width: 640px) {
+                .process-steps {
+                    flex-direction: row;
+                    justify-content: space-between;
+                }
+
+                .step {
+                    flex: 1;
+                    margin-bottom: 0;
+                    margin-right: 1rem;
+                }
+
+                .step:last-child {
+                    margin-right: 0;
+                }
+
+                .step-text {
+                    font-size: 0.875rem;
+                }
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
