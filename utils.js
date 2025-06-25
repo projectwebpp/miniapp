@@ -1,4 +1,23 @@
-// utils.js - ไฟล์ Utilities
+// utils.js - ไฟล์ Utilities พร้อม Memory Caching
+
+// Cache configuration
+const CACHE_CONFIG = {
+    goldPrices: {
+        key: 'goldPricesCache',
+        duration: 5 * 60 * 1000, // 5 นาที
+    },
+    bankAccounts: {
+        key: 'bankAccountsCache', 
+        duration: 60 * 60 * 1000, // 1 ชั่วโมง
+    }
+};
+
+// Memory cache object
+const memoryCache = {
+    goldPrices: null,
+    bankAccounts: null,
+    timestamps: {}
+};
 
 // Format number to 2 decimal places
 function formatNumber(num) {
@@ -31,73 +50,194 @@ function getGoldTypeText(goldType) {
     return goldType === 'bar' ? 'ทองคำแท่ง 96.5%' : 'ทองรูปพรรณ 96.5%';
 }
 
-// Fetch current gold prices
-async function fetchGoldPrices() {
+// Check if cache is valid
+function isCacheValid(cacheType) {
+    const config = CACHE_CONFIG[cacheType];
+    const timestamp = memoryCache.timestamps[cacheType];
+    
+    if (!timestamp || !memoryCache[cacheType]) {
+        return false;
+    }
+    
+    return (Date.now() - timestamp) < config.duration;
+}
+
+// Set cache data
+function setCacheData(cacheType, data) {
+    memoryCache[cacheType] = data;
+    memoryCache.timestamps[cacheType] = Date.now();
+    
+    // Optional: เก็บไว้ใน sessionStorage เป็น backup
     try {
-        //console.log('Fetching gold prices from:', GOLD_PRICE_API);
+        const cacheItem = {
+            data: data,
+            timestamp: Date.now()
+        };
+        sessionStorage.setItem(CACHE_CONFIG[cacheType].key, JSON.stringify(cacheItem));
+    } catch (error) {
+        console.warn('Could not save to sessionStorage:', error);
+    }
+}
+
+// Get cache data with fallback to sessionStorage
+function getCacheData(cacheType) {
+    // ลองจาก memory cache ก่อน
+    if (isCacheValid(cacheType)) {
+        return memoryCache[cacheType];
+    }
+    
+    // ถ้าไม่มีใน memory ลองจาก sessionStorage
+    try {
+        const cached = sessionStorage.getItem(CACHE_CONFIG[cacheType].key);
+        if (cached) {
+            const cacheItem = JSON.parse(cached);
+            const isValid = (Date.now() - cacheItem.timestamp) < CACHE_CONFIG[cacheType].duration;
+            
+            if (isValid) {
+                // เอากลับมาเก็บใน memory cache
+                memoryCache[cacheType] = cacheItem.data;
+                memoryCache.timestamps[cacheType] = cacheItem.timestamp;
+                return cacheItem.data;
+            }
+        }
+    } catch (error) {
+        console.warn('Could not read from sessionStorage:', error);
+    }
+    
+    return null;
+}
+
+// Clear specific cache
+function clearCache(cacheType) {
+    memoryCache[cacheType] = null;
+    memoryCache.timestamps[cacheType] = null;
+    
+    try {
+        sessionStorage.removeItem(CACHE_CONFIG[cacheType].key);
+    } catch (error) {
+        console.warn('Could not clear sessionStorage:', error);
+    }
+}
+
+// Clear all caches
+function clearAllCaches() {
+    Object.keys(CACHE_CONFIG).forEach(cacheType => {
+        clearCache(cacheType);
+    });
+}
+
+// Fetch current gold prices with caching
+async function fetchGoldPrices(forceRefresh = false) {
+    try {
+        // ตรวจสอบ cache ก่อน (ยกเว้นถ้า force refresh)
+        if (!forceRefresh) {
+            const cachedPrices = getCacheData('goldPrices');
+            if (cachedPrices) {
+                console.log('Using cached gold prices');
+                
+                // อัปเดตราคาใน currentGoldPrices object
+                currentGoldPrices.bar.buyPrice = cachedPrices.bar.buyPrice;
+                currentGoldPrices.bar.sellPrice = cachedPrices.bar.sellPrice;
+                currentGoldPrices.ornament.buyPrice = cachedPrices.ornament.buyPrice;
+                currentGoldPrices.ornament.sellPrice = cachedPrices.ornament.sellPrice;
+                
+                return true;
+            }
+        }
+        
+        console.log('Fetching fresh gold prices from API');
         const response = await fetch(GOLD_PRICE_API);
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const data = await response.json();
-        //console.log('API Response:', JSON.stringify(data, null, 2));
+        
         if (!data.success || !Array.isArray(data.data)) {
             throw new Error('Invalid API response format: success is false or data is not an array');
         }
         
         let barBuyPrice = 0, barSellPrice = 0, ornamentBuyPrice = 0, ornamentSellPrice = 0;
         for (const item of data.data) {
-            //console.log('Processing item:', item);
             if (item.sellPriceGoldBar === "ราคาขายออก" && item.taxBasePrice === "ทองคำแท่ง 96.5%") {
                 barBuyPrice = parseFloat(item.buyPriceGoldOrnament) || 0;
-                //console.log(`Found bar buy price (ราคาขายออก): ${barBuyPrice}`);
             } else if (item.sellPriceGoldBar === "ราคาขายออก" && item.taxBasePrice === "ทองรูปพรรณ 96.5%") {
                 ornamentBuyPrice = parseFloat(item.buyPriceGoldOrnament) || 0;
-                //console.log(`Found ornament buy price (ราคาขายออก): ${ornamentBuyPrice}`);
             } else if (item.sellPriceGoldBar === "รับซื้อ" && item.buyPriceGoldOrnament) {
                 const price = parseFloat(item.buyPriceGoldOrnament) || 0;
                 barSellPrice = price;
                 ornamentSellPrice = price;
-                //console.log(`Found sell price (รับซื้อ) for both types: ${price}`);
             }
         }
-        
-        //console.log('Parsed Prices:', { barBuyPrice, barSellPrice, ornamentBuyPrice, ornamentSellPrice });
         
         if (!barBuyPrice || !barSellPrice || !ornamentBuyPrice) {
             throw new Error('Missing required price data: barBuyPrice, barSellPrice, or ornamentBuyPrice');
         }
         
+        // เก็บราคาใน currentGoldPrices object
         currentGoldPrices.bar.buyPrice = barBuyPrice;
         currentGoldPrices.bar.sellPrice = barSellPrice;
         currentGoldPrices.ornament.buyPrice = ornamentBuyPrice;
         currentGoldPrices.ornament.sellPrice = ornamentSellPrice;
         
-        //console.log('Stored Prices:', currentGoldPrices);
+        // เก็บใน cache
+        const pricesData = {
+            bar: {
+                buyPrice: barBuyPrice,
+                sellPrice: barSellPrice
+            },
+            ornament: {
+                buyPrice: ornamentBuyPrice,
+                sellPrice: ornamentSellPrice
+            }
+        };
+        setCacheData('goldPrices', pricesData);
+        
+        console.log('Gold prices cached successfully');
         return true;
     } catch (error) {
-        //console.error('Error fetching gold prices:', error.message);
+        console.error('Error fetching gold prices:', error.message);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงราคาทองคำล่าสุดได้ กรุณากรอกราคาด้วยตนเอง', 'error');
         return false;
     }
 }
 
-// Fetch bank accounts from Google Sheets
-async function fetchBankAccounts() {
+// Fetch bank accounts from Google Sheets with caching
+async function fetchBankAccounts(forceRefresh = false) {
     try {
+        // ตรวจสอบ cache ก่อน (ยกเว้นถ้า force refresh)
+        if (!forceRefresh) {
+            const cachedBankAccounts = getCacheData('bankAccounts');
+            if (cachedBankAccounts) {
+                console.log('Using cached bank accounts');
+                BANK_ACCOUNTS = cachedBankAccounts;
+                return true;
+            }
+        }
+        
+        console.log('Fetching fresh bank accounts from API');
         const response = await fetch(`${API_URL}?action=getBankAccounts`);
         const data = await response.json();
+        
         if (data.success) {
-            BANK_ACCOUNTS = data.bankAccounts.reduce((acc, bank) => {
+            const bankAccountsData = data.bankAccounts.reduce((acc, bank) => {
                 acc[bank.bankName] = bank.accountNumber;
                 return acc;
             }, {});
-            //console.log('Fetched bank accounts:', BANK_ACCOUNTS);
+            
+            BANK_ACCOUNTS = bankAccountsData;
+            
+            // เก็บใน cache
+            setCacheData('bankAccounts', bankAccountsData);
+            
+            console.log('Bank accounts cached successfully');
+            return true;
         } else {
-            //console.error('Failed to fetch bank accounts:', data.message);
+            console.error('Failed to fetch bank accounts:', data.message);
+            return false;
         }
     } catch (error) {
-        //console.error('Error fetching bank accounts:', error);
+        console.error('Error fetching bank accounts:', error);
+        return false;
     }
 }
 
@@ -114,217 +254,51 @@ function fileToBase64(file) {
     });
 }
 
-// Send Flex Message
-async function sendFlexMessage(transactionType, amount, price, total, newBalance, goldType) {
-    const flexMessage = {
-        type: "flex",
-        altText: `${transactionType}ทอง ${getGoldUnitText(amount)} (${getGoldTypeText(goldType)})`,
-        contents: {
-            type: "bubble",
-            hero: {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                    {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "text",
-                                text: transactionType === "ซื้อ" ? "✅ ซื้อทองสำเร็จ" : "✅ ขายทองสำเร็จ",
-                                size: "xl",
-                                color: "#ffffff",
-                                weight: "bold",
-                                align: "center"
-                            }
-                        ],
-                        backgroundColor: transactionType === "ซื้อ" ? "#10b981" : "#ef4444",
-                        paddingAll: "20px"
-                    }
-                ],
-                paddingAll: "0px"
-            },
-            body: {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "ผู้ทำรายการ",
-                                size: "sm",
-                                color: "#666666",
-                                flex: 4
-                            },
-                            {
-                                type: "text",
-                                text: window.userData ? window.userData.name : 'ผู้ใช้',
-                                size: "sm",
-                                color: "#111111",
-                                align: "end",
-                                flex: 6,
-                                wrap: true
-                            }
-                        ],
-                        margin: "md"
-                    },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "ประเภททอง",
-                                size: "sm",
-                                color: "#666666",
-                                flex: 4
-                            },
-                            {
-                                type: "text",
-                                text: getGoldTypeText(goldType),
-                                size: "sm",
-                                color: "#111111",
-                                align: "end",
-                                flex: 6
-                            }
-                        ],
-                        margin: "md"
-                    },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "จำนวนทอง",
-                                size: "sm",
-                                color: "#666666",
-                                flex: 4
-                            },
-                            {
-                                type: "text",
-                                text: getGoldUnitText(amount),
-                                size: "sm",
-                                color: "#111111",
-                                align: "end",
-                                flex: 6
-                            }
-                        ],
-                        margin: "md"
-                    },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "ราคาทอง",
-                                size: "sm",
-                                color: "#666666",
-                                flex: 4
-                            },
-                            {
-                                type: "text",
-                                text: `฿${formatCurrency(price)}/บาท`,
-                                size: "sm",
-                                color: "#111111",
-                                align: "end",
-                                flex: 6
-                            }
-                        ],
-                        margin: "md"
-                    },
-                    {
-                        type: "separator",
-                        margin: "lg"
-                    },
-                    {
-                        type: "box",
-                        layout: "horizontal",
-                        contents: [
-                            {
-                                type: "text",
-                                text: "ยอดเงินรวม",
-                                size: "md",
-                                color: "#111111",
-                                weight: "bold",
-                                flex: 4
-                            },
-                            {
-                                type: "text",
-                                text: `฿${formatCurrency(total)}`,
-                                size: "md",
-                                color: transactionType === "ซื้อ" ? "#10b981" : "#ef4444",
-                                align: "end",
-                                weight: "bold",
-                                flex: 6
-                            }
-                        ],
-                        margin: "lg"
-                    },
-                    {
-                        type: "box",
-                        layout: "vertical",
-                        contents: [
-                            {
-                                type: "box",
-                                layout: "horizontal",
-                                contents: [
-                                    {
-                                        type: "text",
-                                        text: "💰 ทองคงเหลือ",
-                                        size: "sm",
-                                        color: "#ffffff",
-                                        flex: 5
-                                    },
-                                    {
-                                        type: "text",
-                                        text: `${formatNumber(newBalance)} กรัม`,
-                                        size: "sm",
-                                        color: "#ffffff",
-                                        align: "end",
-                                        weight: "bold",
-                                        flex: 5
-                                    }
-                                ]
-                            }
-                        ],
-                        backgroundColor: "#fbbf24",
-                        paddingAll: "15px",
-                        cornerRadius: "8px",
-                        margin: "lg"
-                    }
-                ],
-                paddingAll: "20px"
-            },
-            footer: {
-                type: "box",
-                layout: "vertical",
-                contents: [
-                    {
-                        type: "text",
-                        text: new Date().toLocaleString('th-TH'),
-                        size: "xs",
-                        color: "#aaaaaa",
-                        align: "center"
-                    }
-                ],
-                paddingAll: "10px"
-            }
+// Utility function to get cache info (for debugging)
+function getCacheInfo() {
+    return {
+        goldPrices: {
+            cached: !!memoryCache.goldPrices,
+            timestamp: memoryCache.timestamps.goldPrices,
+            valid: isCacheValid('goldPrices'),
+            expiresIn: memoryCache.timestamps.goldPrices ? 
+                Math.max(0, CACHE_CONFIG.goldPrices.duration - (Date.now() - memoryCache.timestamps.goldPrices)) : 0
+        },
+        bankAccounts: {
+            cached: !!memoryCache.bankAccounts,
+            timestamp: memoryCache.timestamps.bankAccounts,
+            valid: isCacheValid('bankAccounts'),
+            expiresIn: memoryCache.timestamps.bankAccounts ? 
+                Math.max(0, CACHE_CONFIG.bankAccounts.duration - (Date.now() - memoryCache.timestamps.bankAccounts)) : 0
         }
     };
+}
 
+// Initialize caches on page load
+async function initializeCaches() {
+    console.log('Initializing caches...');
+    
+    const promises = [];
+    
+    // โหลดราคาทองคำ
+    promises.push(fetchGoldPrices());
+    
+    // โหลดบัญชีธนาคาร
+    promises.push(fetchBankAccounts());
+    
     try {
-        if (liff.isInClient()) {
-            await liff.sendMessages([flexMessage]);
-            //console.log('Flex Message sent successfully');
-        } else {
-            //console.warn('Cannot send Flex Message: Not in LINE client');
-        }
+        await Promise.all(promises);
+        console.log('All caches initialized successfully');
     } catch (error) {
-        //console.error('Error sending flex message:', error);
+        console.error('Error initializing caches:', error);
     }
 }
+
+// Export functions for global use (if needed)
+window.cacheUtils = {
+    clearCache,
+    clearAllCaches,
+    getCacheInfo,
+    forceRefreshGoldPrices: () => fetchGoldPrices(true),
+    forceRefreshBankAccounts: () => fetchBankAccounts(true)
+};
