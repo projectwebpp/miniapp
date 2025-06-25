@@ -618,15 +618,7 @@
                                             <i class="fas fa-info-circle mr-1"></i>
                                             สามารถตรวจสอบสถานะได้ในหน้าประวัติรายการ
                                         </p>
-                                    </div>
-                                    ${responseText !== 'success' ? `
-                                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                        <p class="text-xs text-gray-600">
-                                            <i class="fas fa-server mr-1"></i>
-                                            Server Response: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}
-                                        </p>
-                                    </div>
-                                    ` : ''}
+                                    </div>                                   
                                 </div>
                             `,
                             confirmButtonText: '🏠 กลับหน้าหลัก',
