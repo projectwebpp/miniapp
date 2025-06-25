@@ -267,9 +267,7 @@
                         div.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
                         const typeColor = transaction.type === 'เติมเงิน' ? 'text-green-600' : 'text-red-600';
                         const typeIcon = transaction.type === 'เติมเงิน' ? 'fa-plus-circle' : 'fa-minus-circle';
-                        const typeIcon = transaction.type === 'อนุมัติถอนเงิน'& 'อนุมัติถอนเงิน'? 'fas fa-check-circle' : 'fas fa-check-circle';
                         const statusColor = transaction.status === 'สำเร็จ' ? 'text-green-500' :
-                        const statusColor = transaction.status === 'อนุมัติถอนเงิน'&'อนุมัติถอนเงิน' ? 'text-green-500' :
                         transaction.status === 'รอดำเนินการ' ? 'text-yellow-500' : 'text-red-500';
                         div.innerHTML = `
                             <div>
