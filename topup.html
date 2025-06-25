@@ -280,10 +280,18 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
-        // Configuration
-        const LIFF_ID = 'your-liff-id-here';
-        const API_URL = 'https://script.google.com/macros/s/your-script-id/exec';
+        // Global Variables
+        let userData = {};
+        let walletData = { balance: 0 };
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
+
         
         // Bank accounts mapping
         const BANK_ACCOUNTS = {
@@ -297,9 +305,6 @@
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
 
-        // Global Variables
-        let userData = {};
-        let walletData = { balance: 0 };
 
         // Utility Functions
         function formatCurrency(amount) {
