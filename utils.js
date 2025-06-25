@@ -50,15 +50,15 @@ async function fetchGoldPrices() {
             console.log('Processing item:', item);
             if (item.sellPriceGoldBar === "ราคาขายออก" && item.taxBasePrice === "ทองคำแท่ง 96.5%") {
                 barBuyPrice = parseFloat(item.buyPriceGoldOrnament) || 0;
-                console.log(`Found bar buy price (ราคาขายออก): ${barBuyPrice}`);
+                //console.log(`Found bar buy price (ราคาขายออก): ${barBuyPrice}`);
             } else if (item.sellPriceGoldBar === "ราคาขายออก" && item.taxBasePrice === "ทองรูปพรรณ 96.5%") {
                 ornamentBuyPrice = parseFloat(item.buyPriceGoldOrnament) || 0;
-                console.log(`Found ornament buy price (ราคาขายออก): ${ornamentBuyPrice}`);
+                //console.log(`Found ornament buy price (ราคาขายออก): ${ornamentBuyPrice}`);
             } else if (item.sellPriceGoldBar === "รับซื้อ" && item.buyPriceGoldOrnament) {
                 const price = parseFloat(item.buyPriceGoldOrnament) || 0;
                 barSellPrice = price;
                 ornamentSellPrice = price;
-                console.log(`Found sell price (รับซื้อ) for both types: ${price}`);
+                //console.log(`Found sell price (รับซื้อ) for both types: ${price}`);
             }
         }
         
@@ -76,7 +76,7 @@ async function fetchGoldPrices() {
         console.log('Stored Prices:', currentGoldPrices);
         return true;
     } catch (error) {
-        console.error('Error fetching gold prices:', error.message);
+        //console.error('Error fetching gold prices:', error.message);
         Swal.fire('ข้อผิดพลาด', 'ไม่สามารถดึงราคาทองคำล่าสุดได้ กรุณากรอกราคาด้วยตนเอง', 'error');
         return false;
     }
@@ -322,7 +322,7 @@ async function sendFlexMessage(transactionType, amount, price, total, newBalance
             await liff.sendMessages([flexMessage]);
             //console.log('Flex Message sent successfully');
         } else {
-            console.warn('Cannot send Flex Message: Not in LINE client');
+            //console.warn('Cannot send Flex Message: Not in LINE client');
         }
     } catch (error) {
         //console.error('Error sending flex message:', error);
