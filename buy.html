@@ -147,11 +147,14 @@
         </div>
     </div>
 
+    <script src="config.js"></script>
+    <script src="utils.js"></script>
     <script>
-        // Performance optimization: Use constants and cache DOM elements
-        const GRAMS_PER_BAHT = 15.2;
-        const API_URL = 'your-api-url';
-        const LIFF_ID = 'your-liff-id';
+
+        // Go back function
+        function goBack() {
+            window.history.back();
+        }
         
         // Cache DOM elements for better performance
         const elements = {
