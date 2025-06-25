@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
@@ -188,7 +189,7 @@
                 <h2 class="text-xl font-bold mb-6 text-center">
                     <i class="fas fa-plus-circle mr-2 text-blue-500"></i>เติมเงินเข้ากระเป๋า
                 </h2>
-                
+
                 <div class="space-y-4">
                     <!-- Amount -->
                     <div>
@@ -241,7 +242,7 @@
                             <p class="text-xs text-gray-500 mt-1">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
                         </label>
                         <input type="file" id="topupSlip" accept="image/jpeg,image/png" class="hidden">
-                        
+
                         <div id="filePreview" class="mt-3 hidden">
                             <p id="topupFileName" class="text-sm text-gray-600 mb-2"></p>
                             <img id="previewImage" src="" alt="Preview" class="file-preview mt-2 w-full max-h-48 object-cover rounded-lg">
@@ -279,13 +280,13 @@
         </div>
     </div>
 
-   <script src="config.js"></script>
+    <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
         // Global Variables
         let userData = {};
         let walletData = { balance: 0 };
-        
+
         // Go back function
         function goBack() {
             if (window.history.length > 1) {
@@ -294,38 +295,15 @@
                 window.location.href = 'index.html';
             }
         }
-        
+
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
-
-        // Global Variables
-        let userData = {};
-        let walletData = { balance: 0 };
-
-        // Utility Functions
-        function formatCurrency(amount) {
-            return new Intl.NumberFormat('th-TH', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            }).format(amount);
-        }
-
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-
 
         // Update account number based on bank selection
         function updateAccountNumber() {
             const bankSelect = document.getElementById('topupBank');
             const accountNumberField = document.getElementById('topupAccountNumber');
-            
+
             if (bankSelect && accountNumberField) {
                 const selectedBank = bankSelect.value;
                 accountNumberField.value = BANK_ACCOUNTS[selectedBank] || '';
@@ -345,7 +323,7 @@
                     setTimeout(() => {
                         copyBtn.innerHTML = originalIcon;
                     }, 2000);
-                    
+
                     // Show toast notification
                     Swal.fire({
                         icon: 'success',
@@ -389,7 +367,7 @@
             updateProcessSteps(2);
         }
 
-        // Submit top-up request - เพิ่มโหมดทดสอบ
+        // Submit top-up request
         async function submitTopup() {
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
@@ -397,16 +375,9 @@
             const slipFile = document.getElementById('topupSlip').files[0];
 
             // Validate inputs
-            if (!amount || amount < 100) {
-                Swal.fire('ผิดพลาด', 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ขั้นต่ำ 100 บาท)', 'error');
-                return;
-            }
-            if (!bank) {
-                Swal.fire('ผิดพลาด', 'กรุณาเลือกธนาคาร', 'error');
-                return;
-            }
-            if (!slipFile) {
-                Swal.fire('ผิดพลาด', 'กรุณาอัพโหลดสลิปโอนเงิน', 'error');
+            const errors = validateTopupData(amount, bank, slipFile);
+            if (errors.length > 0) {
+                Swal.fire('ผิดพลาด', errors.join('<br>'), 'error');
                 return;
             }
 
@@ -437,10 +408,10 @@
                 if (API_URL.includes('YOUR_ACTUAL_SCRIPT_ID')) {
                     // โหมดทดสอบ - จำลองการส่งข้อมูลสำเร็จ
                     console.log('Demo mode - simulating successful submission');
-                    
+
                     // จำลองการรอ API
                     await new Promise(resolve => setTimeout(resolve, 2000));
-                    
+
                     // บันทึกรายการในประวัติ
                     const transactionRecord = {
                         id: transactionId,
@@ -452,9 +423,9 @@
                         status: 'pending',
                         filename: slipFile.name
                     };
-                    
+
                     saveToLocalHistory(transactionRecord);
-                    
+
                     // แจ้งผลสำเร็จ (โหมดทดสอบ)
                     await Swal.fire({
                         icon: 'success',
@@ -486,25 +457,25 @@
                         confirmButtonColor: '#10b981',
                         allowOutsideClick: false
                     });
-                    
+
                     // กลับไปหน้าหลัก
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 1000);
-                    
+
                     return; // ออกจากฟังก์ชันในโหมดทดสอบ
                 }
 
                 // สร้าง FormData แทน JSON เพื่อแก้ปัญหา CORS
                 const formData = new FormData();
-                formData.append('action', 'deposit'); // เปลี่ยนเป็น action ที่ GS รองรับ
+                formData.append('action', 'deposit');
                 formData.append('userId', userData.userId);
                 formData.append('amount', amount.toString());
                 formData.append('bank', bank);
                 formData.append('account', account);
                 formData.append('slip', base64);
                 formData.append('filename', slipFile.name);
-                
+
                 // เพิ่มข้อมูลเสริม
                 formData.append('transactionId', transactionId);
                 formData.append('dateTime', dateTime);
@@ -514,7 +485,7 @@
                 // Send data to Google Apps Script แบบ FormData (ไม่มี CORS issue)
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    body: formData // ไม่ต้องใส่ Content-Type header เมื่อใช้ FormData
+                    body: formData
                 });
 
                 if (!response.ok) {
@@ -524,7 +495,7 @@
                 // รับผลลัพธ์เป็น text แล้วแปลงเป็น JSON
                 const resultText = await response.text();
                 console.log('Raw server response:', resultText);
-                
+
                 let result;
                 try {
                     result = JSON.parse(resultText);
@@ -532,7 +503,7 @@
                     console.log('Response is not JSON, treating as text response');
                     result = { success: true, message: resultText };
                 }
-                
+
                 console.log('Parsed server response:', result);
 
                 if (result.success || resultText.includes('success') || resultText.includes('สำเร็จ') || resultText.includes('เรียบร้อย')) {
@@ -540,11 +511,11 @@
                     const finalTransactionId = result.transactionId || transactionId;
                     const finalSlipUrl = result.slipUrl || '';
                     const finalStatus = result.status || 'รอดำเนินการ';
-                    
+
                     // บันทึกรายการในประวัติ
                     const transactionRecord = {
                         id: finalTransactionId,
-                        type: 'deposit', 
+                        type: 'deposit',
                         amount: amount,
                         bank: bank,
                         account: account,
@@ -553,9 +524,9 @@
                         filename: slipFile.name,
                         slipUrl: finalSlipUrl
                     };
-                    
+
                     saveToLocalHistory(transactionRecord);
-                    
+
                     // แจ้งผลสำเร็จ
                     await Swal.fire({
                         icon: 'success',
@@ -587,7 +558,7 @@
                         confirmButtonColor: '#10b981',
                         allowOutsideClick: false
                     });
-                    
+
                     // ส่งการแจ้งเตือนผ่าน LINE (ถ้ามี)
                     try {
                         if (typeof liff !== 'undefined' && liff.isApiAvailable && liff.isApiAvailable('shareTargetPicker')) {
@@ -595,28 +566,28 @@
                                 type: 'text',
                                 text: `✅ ส่งคำขอเติมเงินสำเร็จ\n💰 จำนวน: ฿${formatCurrency(amount)}\n🏦 ธนาคาร: ${bank}\n📄 เลขที่รายการ: ${transactionId}\n⏰ รอการตรวจสอบ 1-2 วันทำการ\n📋 สถานะ: รอดำเนินการ`
                             };
-                            
+
                             // ส่งข้อความหาตัวเอง
                             await liff.sendMessages([message]);
                         }
                     } catch (lineError) {
                         console.log('LINE notification error (non-critical):', lineError);
                     }
-                    
+
                     // แสดง success notification
                     await showSuccessNotification(transactionRecord);
-                    
+
                     // รอสักครู่แล้วกลับไปหน้าหลัก
                     setTimeout(() => {
                         window.location.href = 'index.html';
                     }, 1000);
-                    
+
                 } else {
                     throw new Error(result.message || resultText || 'ไม่สามารถส่งคำขอเติมเงินได้');
                 }
             } catch (error) {
                 console.error('Topup error:', error);
-                
+
                 // ตรวจสอบข้อผิดพลาดเฉพาะ
                 if (error.message.includes('404') || API_URL.includes('YOUR_ACTUAL_SCRIPT_ID')) {
                     // แสดงคำแนะนำการตั้งค่า Google Apps Script
@@ -626,7 +597,7 @@
                         html: `
                             <div class="text-left space-y-3">
                                 <p class="text-gray-700">เพื่อใช้งานระบบเติมเงินจริง ต้องทำตามขั้นตอนเหล่านี้:</p>
-                                
+
                                 <div class="bg-blue-50 p-4 rounded-lg">
                                     <h4 class="font-semibold text-blue-800 mb-2">📝 ขั้นตอนการตั้งค่า:</h4>
                                     <ol class="text-sm text-blue-700 space-y-1">
@@ -637,14 +608,14 @@
                                         <li>5. คัดลอก URL มาใส่ใน API_URL</li>
                                     </ol>
                                 </div>
-                                
+
                                 <div class="bg-yellow-50 p-4 rounded-lg">
                                     <p class="text-sm text-yellow-700">
                                         <strong>ปัจจุบัน:</strong> ระบบกำลังทำงานในโหมดทดสอบ<br>
                                         ข้อมูลจะถูกบันทึกเฉพาะในเครื่องของคุณเท่านั้น
                                     </p>
                                 </div>
-                                
+
                                 <div class="bg-gray-50 p-3 rounded text-sm">
                                     <p class="font-semibold mb-1">ข้อมูลที่กรอก:</p>
                                     <p>• จำนวนเงิน: ฿${formatCurrency(amount)}</p>
@@ -660,13 +631,13 @@
                 } else {
                     // ข้อผิดพลาดอื่นๆ
                     let errorMessage = handleNetworkError(error);
-                    
+
                     if (error.message.includes('CORS')) {
                         errorMessage = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
                     } else if (error.message.includes('NetworkError')) {
                         errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
                     }
-                    
+
                     Swal.fire({
                         icon: 'error',
                         title: 'เกิดข้อผิดพลาด',
@@ -694,17 +665,17 @@
             }
         }
 
-        // Load Wallet Data - ใช้ API ของ GS ปัจจุบัน
+        // Load Wallet Data
         async function loadWalletData() {
             try {
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`, {
                     method: 'GET'
                 });
-                
+
                 if (response.ok) {
                     const data = await response.json();
                     console.log('Wallet data response:', data);
-                    
+
                     if (data.success) {
                         walletData.balance = data.balance || 0;
                         document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
@@ -727,25 +698,38 @@
             }
         }
 
-        // Initialize LIFF (จำลอง)
+        // Initialize LIFF
         window.onload = async function() {
             try {
-                // จำลองการ init LIFF (ในการใช้งานจริงต้องใช้ LIFF ID จริง)
-                // await liff.init({ liffId: LIFF_ID });
-                
-                // จำลองผู้ใช้ล็อกอิน
-                initApp();
+                // Initialize LIFF
+                await liff.init({ liffId: LIFF_ID });
+
+                if (liff.isLoggedIn()) {
+                    const profile = await liff.getProfile();
+                    userData = {
+                        userId: profile.userId,
+                        name: profile.displayName,
+                        picture: profile.pictureUrl
+                    };
+                } else {
+                    liff.login();
+                }
+
+                await loadWalletData();
+                updateProcessSteps(1);
+
+                // Set up file input handlers
+                setupFileHandlers();
+
+                // Set up amount validation
+                setupAmountValidation();
+
+                // Show app
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
             } catch (err) {
                 console.error('LIFF init failed:', err);
                 // จำลองข้อมูลผู้ใช้เพื่อการทดสอบ
-                initApp();
-            }
-        };
-
-        // Initialize App
-        async function initApp() {
-            try {
-                // จำลองข้อมูลผู้ใช้ (ในการใช้งานจริงจะได้จาก liff.getProfile())
                 userData = {
                     userId: 'demo-user-12345',
                     name: 'ผู้ใช้ทดสอบ',
@@ -757,19 +741,15 @@
 
                 // Set up file input handlers
                 setupFileHandlers();
-                
+
                 // Set up amount validation
                 setupAmountValidation();
 
                 // Show app
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
-                
-            } catch (error) {
-                console.error('Error initializing app:', error);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
-        }
+        };
 
         // Setup file input handlers
         function setupFileHandlers() {
@@ -800,7 +780,6 @@
                 e.preventDefault();
                 fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
                 fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
-
                 if (e.dataTransfer.files.length > 0) {
                     handleFileSelect(e.dataTransfer.files[0]);
                 }
@@ -887,150 +866,29 @@
                 const amount = parseFloat(amountInput.value) || 0;
                 const bank = this.value;
                 const hasSlip = document.getElementById('topupSlip').files.length > 0;
-                
+
                 submitBtn.disabled = !(amount >= 100 && bank && hasSlip);
             });
         }
 
-        // Google Apps Script Integration Functions
-        async function sendToGoogleSheets(data) {
-            try {
-                // ใช้ FormData แทน JSON เพื่อหลีกเลี่ยง CORS issues
-                const formData = new FormData();
-                
-                // เพิ่มข้อมูลทั้งหมดลงใน FormData
-                Object.keys(data).forEach(key => {
-                    formData.append(key, data[key]);
-                });
-
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: formData // ไม่ต้องใส่ headers เมื่อใช้ FormData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                // รับผลลัพธ์เป็น text ก่อน
-                const resultText = await response.text();
-                
-                // พยายามแปลงเป็น JSON
-                try {
-                    return JSON.parse(resultText);
-                } catch (parseError) {
-                    // ถ้าไม่ได้เป็น JSON ให้ถือว่าสำเร็จถ้ามีคำว่า success หรือ สำเร็จ
-                    return {
-                        success: resultText.includes('success') || resultText.includes('สำเร็จ'),
-                        message: resultText
-                    };
-                }
-            } catch (error) {
-                console.error('Google Sheets API Error:', error);
-                throw error;
-            }
-        }
-
-        // Alternative fetch method สำหรับ Google Apps Script
-        async function sendDataToGAS(data) {
-            // วิธีที่ 1: ใช้ FormData (แนะนำ)
-            const formData = new FormData();
-            
-            // เพิ่มข้อมูลลงใน FormData
-            for (const [key, value] of Object.entries(data)) {
-                formData.append(key, value);
-            }
-
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.text();
-                console.log('GAS Response:', result);
-                
-                return {
-                    success: true,
-                    data: result
-                };
-            } catch (error) {
-                console.error('Error sending to GAS:', error);
-                throw error;
-            }
-        }
-
-        // Transaction History Functions
+        // Save to local history
         function saveToLocalHistory(transaction) {
             try {
                 let history = JSON.parse(localStorage.getItem('topupHistory') || '[]');
                 history.unshift(transaction);
-                
+
                 // เก็บประวัติล่าสุด 50 รายการ
                 if (history.length > 50) {
                     history = history.slice(0, 50);
                 }
-                
+
                 localStorage.setItem('topupHistory', JSON.stringify(history));
             } catch (error) {
                 console.error('Error saving to local history:', error);
             }
         }
 
-        // Format functions
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        function generateTransactionId() {
-            const timestamp = Date.now();
-            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-            return `TOP${timestamp}${random}`;
-        }
-
-        // Error handling functions
-        function handleNetworkError(error) {
-            console.error('Network error:', error);
-            
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                return 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
-            }
-            
-            if (error.message.includes('timeout')) {
-                return 'การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง';
-            }
-            
-            return 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
-        }
-
-        // Validation functions
-        function validateTopupData(amount, bank, slip) {
-            const errors = [];
-            
-            if (!amount || amount < 100) {
-                errors.push('จำนวนเงินต้องไม่น้อยกว่า 100 บาท');
-            }
-            
-            if (amount > 1000000) {
-                errors.push('จำนวนเงินต้องไม่เกิน 1,000,000 บาท');
-            }
-            
-            if (!bank) {
-                errors.push('กรุณาเลือกธนาคาร');
-            }
-            
-            if (!slip) {
-                errors.push('กรุณาอัพโหลดสลิปโอนเงิน');
-            }
-            
-            return errors;
-        }
-
-        // Success notification
+        // Show success notification
         async function showSuccessNotification(transactionData) {
             // แสดงการแจ้งเตือนแบบ Toast
             const toast = Swal.mixin({
@@ -1052,48 +910,18 @@
             });
         }
 
-        // Debug functions (สำหรับการพัฒนา)
-        function debugLog(message, data = null) {
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                console.log(`[TOPUP DEBUG] ${message}`, data);
-            }
-        }
-
-        // Performance monitoring
-        function trackPerformance(actionName, startTime) {
-            const endTime = performance.now();
-            const duration = endTime - startTime;
-            debugLog(`Performance: ${actionName} took ${duration.toFixed(2)}ms`);
-        }
-
-        // Initialize performance tracking
-        const initStartTime = performance.now();
-        
-        // Track when page is fully loaded
-        window.addEventListener('load', () => {
-            trackPerformance('Page Load', initStartTime);
-        });
-
-        // Service Worker registration (for offline support - optional)
+        // Service Worker registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
                     .then((registration) => {
-                        debugLog('SW registered: ', registration);
+                        console.log('SW registered: ', registration);
                     })
                     .catch((registrationError) => {
-                        debugLog('SW registration failed: ', registrationError);
+                        console.log('SW registration failed: ', registrationError);
                     });
             });
         }
-
-        // Cleanup function
-        window.addEventListener('beforeunload', () => {
-            // Cleanup any ongoing operations
-            if (window.uploadController) {
-                window.uploadController.abort();
-            }
-        });
     </script>
 </body>
 </html>
