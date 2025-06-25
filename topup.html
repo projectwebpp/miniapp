@@ -9,7 +9,133 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+        }
+        .mobile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+        .page-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            flex: 1;
+            text-align: center;
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .process-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+        }
+        .process-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #e5e7eb;
+            z-index: 1;
+        }
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+        .step-number {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+        .step.active .step-number {
+            background: #3b82f6;
+            color: white;
+            animation: pulse 2s infinite;
+        }
+        .step.completed .step-number {
+            background: #10b981;
+            color: white;
+        }
+        .step-text {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: center;
+        }
+        .step.active .step-text {
+            color: #3b82f6;
+            font-weight: 500;
+        }
+        .step.completed .step-text {
+            color: #10b981;
+            font-weight: 500;
+        }
+        .btn-animate {
+            transition: all 0.3s ease;
+        }
+        .btn-animate:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .file-preview {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     <!-- Mobile Header -->
@@ -81,7 +207,12 @@
                             <i class="fas fa-university mr-1"></i>ธนาคาร
                         </label>
                         <select id="topupBank" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="updateAccountNumber()">
-                            <!-- Options will be populated by JavaScript -->
+                            <option value="">-- เลือกธนาคาร --</option>
+                            <option value="กสิกรไทย">ธนาคารกสิกรไทย</option>
+                            <option value="กรุงเทพ">ธนาคารกรุงเทพ</option>
+                            <option value="ไทยพาณิชย์">ธนาคารไทยพาณิชย์</option>
+                            <option value="กรุงไทย">ธนาคารกรุงไทย</option>
+                            <option value="ทหารไทยธนชาต">ธนาคารทหารไทยธนชาต</option>
                         </select>
                     </div>
 
@@ -149,33 +280,50 @@
         </div>
     </div>
 
-    <script src="config.js"></script>
-    <script src="utils.js"></script>
     <script>
+        // Configuration
+        const LIFF_ID = 'your-liff-id-here';
+        const API_URL = 'https://script.google.com/macros/s/your-script-id/exec';
+        
+        // Bank accounts mapping
+        const BANK_ACCOUNTS = {
+            'กสิกรไทย': '123-4-56789-0',
+            'กรุงเทพ': '987-6-54321-0',
+            'ไทยพาณิชย์': '456-7-89012-3',
+            'กรุงไทย': '789-0-12345-6',
+            'ทหารไทยธนชาต': '321-6-54987-0'
+        };
+        
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
+
         // Global Variables
         let userData = {};
         let walletData = { balance: 0 };
 
-        // Go back function
-        function goBack() {
-            window.history.back();
+        // Utility Functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('th-TH', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
         }
 
-        // Update bank dropdowns in the UI
-        function updateBankDropdowns() {
-            const bankSelect = document.getElementById('topupBank');
-            
-            if (bankSelect) {
-                // Clear existing options
-                bankSelect.innerHTML = '<option value="">-- เลือกธนาคาร --</option>';
-                
-                // Add new options based on BANK_ACCOUNTS
-                for (const [bankName, accountNumber] of Object.entries(BANK_ACCOUNTS)) {
-                    const option = document.createElement('option');
-                    option.value = bankName;
-                    option.textContent = bankName;
-                    bankSelect.appendChild(option);
-                }
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Go back function
+        function goBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = 'index.html';
             }
         }
 
@@ -204,7 +352,7 @@
                         copyBtn.innerHTML = originalIcon;
                     }, 2000);
                     
-                                            // Show toast notification
+                    // Show toast notification
                     Swal.fire({
                         icon: 'success',
                         title: 'คัดลอกเรียบร้อย',
@@ -247,7 +395,7 @@
             updateProcessSteps(2);
         }
 
-        // Submit top-up request
+        // Submit top-up request - แก้ไขให้ใช้หลักการเหมือนถอนเงิน
         async function submitTopup() {
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
@@ -272,25 +420,44 @@
             const submitBtn = document.getElementById('submitTopupBtn');
             submitBtn.disabled = true;
             document.getElementById('submitSpinner').style.display = 'inline-block';
-            document.getElementById('submitText').textContent = 'กำลังอัพโหลด...';
+            document.getElementById('submitText').textContent = 'กำลังประมวลผล...';
 
             try {
                 // Convert file to Base64
                 const base64 = await fileToBase64(slipFile);
 
-                // Prepare payload
+                // สร้าง timestamp และ transaction ID
+                const now = new Date();
+                const transactionId = 'TOP' + now.getTime();
+                const dateTime = now.toLocaleString('th-TH', {
+                    timeZone: 'Asia/Bangkok',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+
+                // Prepare payload สำหรับ Google Apps Script
                 const payload = {
                     action: 'topup',
                     userId: userData.userId,
+                    userName: userData.name,
                     amount: amount,
                     bank: bank,
                     account: account,
                     slip: base64,
                     filename: slipFile.name,
-                    type: slipFile.type
+                    fileType: slipFile.type,
+                    transactionId: transactionId,
+                    dateTime: dateTime,
+                    status: 'pending' // เริ่มต้นด้วยสถานะ pending
                 };
 
-                // Send data to server
+                console.log('Sending payload:', { ...payload, slip: '[BASE64_DATA]' });
+
+                // Send data to Google Apps Script
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -299,26 +466,39 @@
                     body: JSON.stringify(payload)
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const result = await response.json();
+                console.log('Server response:', result);
 
                 if (result.success) {
+                    // อัพเดทยอดเงินในหน้าปัจจุบัน (ถ้าต้องการแสดงทันที)
+                    // walletData.balance += amount;
+                    // document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                    
+                    // แจ้งผลสำเร็จ
                     await Swal.fire({
                         icon: 'success',
-                        title: '🎉 เติมเงินสำเร็จ!',
+                        title: '🎉 ส่งคำขอเติมเงินสำเร็จ!',
                         html: `
                             <div class="text-center space-y-3">
                                 <div class="bg-green-50 p-4 rounded-lg">
                                     <p class="text-lg font-semibold text-green-800">รายละเอียดการเติมเงิน</p>
                                     <hr class="my-2">
                                     <div class="text-left space-y-1">
+                                        <p><strong>เลขที่รายการ:</strong> ${transactionId}</p>
                                         <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
                                         <p><strong>ธนาคาร:</strong> ${bank}</p>
                                         <p><strong>เลขที่บัญชี:</strong> ${account}</p>
+                                        <p><strong>วันที่:</strong> ${dateTime}</p>
                                     </div>
                                 </div>
                                 <div class="bg-blue-50 p-4 rounded-lg">
                                     <p class="text-sm text-blue-800">💰 เงินจะเข้าบัญชีภายใน 5-10 นาที</p>
                                     <p class="text-sm text-blue-800">📱 คุณจะได้รับการแจ้งเตือนผ่าน LINE</p>
+                                    <p class="text-sm text-blue-800">📄 สามารถตรวจสอบสถานะได้ในประวัติการทำรายการ</p>
                                 </div>
                             </div>
                         `,
@@ -327,13 +507,42 @@
                         allowOutsideClick: false
                     });
                     
+                    // ส่งการแจ้งเตือนผ่าน LINE (ถ้ามี)
+                    try {
+                        if (liff.isApiAvailable('shareTargetPicker')) {
+                            const message = {
+                                type: 'text',
+                                text: `✅ ส่งคำขอเติมเงินสำเร็จ\n💰 จำนวน: ${formatCurrency(amount)} บาท\n🏦 ธนาคาร: ${bank}\n📄 เลขที่รายการ: ${transactionId}\n⏰ รอการตรวจสอบ 5-10 นาที`
+                            };
+                            
+                            // ส่งข้อความหาตัวเอง
+                            await liff.sendMessages([message]);
+                        }
+                    } catch (lineError) {
+                        console.log('LINE notification error (non-critical):', lineError);
+                    }
+                    
+                    // กลับไปหน้าหลัก
                     window.location.href = 'index.html';
                 } else {
-                    throw new Error(result.message || 'ไม่สามารถเติมเงินได้');
+                    throw new Error(result.message || 'ไม่สามารถส่งคำขอเติมเงินได้');
                 }
             } catch (error) {
-                console.error('Error:', error);
-                Swal.fire('ผิดพลาด', error.message || 'เกิดข้อผิดพลาดในการเติมเงิน', 'error');
+                console.error('Topup error:', error);
+                
+                let errorMessage = 'เกิดข้อผิดพลาดในการเติมเงิน';
+                if (error.message.includes('fetch')) {
+                    errorMessage = 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'เกิดข้อผิดพลาด',
+                    text: errorMessage,
+                    confirmButtonColor: '#ef4444'
+                });
             } finally {
                 // Reset button state
                 submitBtn.disabled = false;
@@ -346,170 +555,342 @@
         async function loadWalletData() {
             try {
                 const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
-                const data = await response.json();
-                if (data.success) {
-                    walletData.balance = data.balance || 0;
-                    document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        walletData.balance = data.balance || 0;
+                        document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading wallet data:', error);
+                // ไม่แสดง error ให้ผู้ใช้เห็น เพื่อไม่ให้รบกวนการใช้งาน
             }
         }
 
-        // Initialize LIFF
+        // Initialize LIFF (จำลอง)
         window.onload = async function() {
             try {
-                await liff.init({ liffId: LIFF_ID });
-                await fetchBankAccounts();
-                if (liff.isLoggedIn()) {
-                    initApp();
-                } else {
-                    liff.login();
-                }
+                // จำลองการ init LIFF (ในการใช้งานจริงต้องใช้ LIFF ID จริง)
+                // await liff.init({ liffId: LIFF_ID });
+                
+                // จำลองผู้ใช้ล็อกอิน
+                initApp();
             } catch (err) {
                 console.error('LIFF init failed:', err);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+                // จำลองข้อมูลผู้ใช้เพื่อการทดสอบ
+                initApp();
             }
         };
 
         // Initialize App
         async function initApp() {
             try {
-                const profile = await liff.getProfile();
+                // จำลองข้อมูลผู้ใช้ (ในการใช้งานจริงจะได้จาก liff.getProfile())
                 userData = {
-                    userId: profile.userId,
-                    name: profile.displayName,
-                    picture: profile.pictureUrl
+                    userId: 'demo-user-12345',
+                    name: 'ผู้ใช้ทดสอบ',
+                    picture: 'https://via.placeholder.com/150'
                 };
 
                 await loadWalletData();
-                updateBankDropdowns();
                 updateProcessSteps(1);
 
-                // Set up file input
-                const fileInput = document.getElementById('topupSlip');
-                const fileLabel = document.getElementById('topupSlipLabel');
-                const filePreview = document.getElementById('filePreview');
-                const fileName = document.getElementById('topupFileName');
-                const previewImage = document.getElementById('previewImage');
+                // Set up file input handlers
+                setupFileHandlers();
+                
+                // Set up amount validation
+                setupAmountValidation();
 
-                // Real-time amount validation
-                document.getElementById('topupAmount').addEventListener('input', function() {
-                    const amount = parseFloat(this.value) || 0;
-                    const submitBtn = document.getElementById('submitTopupBtn');
-
-                    if (amount < 100) {
-                        submitBtn.disabled = true;
-                        this.style.borderColor = '#ef4444';
-                    } else {
-                        submitBtn.disabled = false;
-                        this.style.borderColor = '#10b981';
-                    }
-                });
-
-                // File input change handler
-                fileInput.addEventListener('change', function(e) {
-                    if (e.target.files.length > 0) {
-                        const file = e.target.files[0];
-
-                        // Validate file type
-                        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ประเภทไฟล์ไม่ถูกต้อง',
-                                text: 'ไฟล์ต้องเป็นรูปภาพ JPG หรือ PNG เท่านั้น',
-                                confirmButtonColor: '#3b82f6'
-                            });
-                            fileInput.value = '';
-                            return;
-                        }
-
-                        // Validate file size
-                        if (file.size > MAX_FILE_SIZE) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ไฟล์มีขนาดใหญ่เกินไป',
-                                text: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
-                                confirmButtonColor: '#3b82f6'
-                            });
-                            fileInput.value = '';
-                            return;
-                        }
-
-                        // Show file preview
-                        fileName.textContent = file.name;
-                        filePreview.classList.remove('hidden');
-                        updateProcessSteps(3);
-
-                        // Show preview image
-                        const reader = new FileReader();
-                        reader.onload = function(event) {
-                            previewImage.src = event.target.result;
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-
-                // Drag and drop functionality
-                fileLabel.addEventListener('dragover', function(e) {
-                    e.preventDefault();
-                    fileLabel.classList.add('border-blue-500', 'bg-blue-50');
-                    fileLabel.querySelector('p').textContent = 'ปล่อยไฟล์ที่นี่เพื่ออัพโหลด';
-                });
-
-                fileLabel.addEventListener('dragleave', function() {
-                    fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
-                    fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
-                });
-
-                fileLabel.addEventListener('drop', function(e) {
-                    e.preventDefault();
-                    fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
-                    fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
-
-                    if (e.dataTransfer.files.length > 0) {
-                        const file = e.dataTransfer.files[0];
-
-                        // Validate file type
-                        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ประเภทไฟล์ไม่ถูกต้อง',
-                                text: 'ไฟล์ต้องเป็นรูปภาพ JPG หรือ PNG เท่านั้น',
-                                confirmButtonColor: '#3b82f6'
-                            });
-                            return;
-                        }
-
-                        // Validate file size
-                        if (file.size > MAX_FILE_SIZE) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'ไฟล์มีขนาดใหญ่เกินไป',
-                                text: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
-                                confirmButtonColor: '#3b82f6'
-                            });
-                            return;
-                        }
-
-                        // Set file to input
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(file);
-                        fileInput.files = dataTransfer.files;
-
-                        // Trigger change event
-                        const event = new Event('change');
-                        fileInput.dispatchEvent(event);
-                    }
-                });
-
+                // Show app
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('app').classList.remove('hidden');
+                
             } catch (error) {
                 console.error('Error initializing app:', error);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
         }
+
+        // Setup file input handlers
+        function setupFileHandlers() {
+            const fileInput = document.getElementById('topupSlip');
+            const fileLabel = document.getElementById('topupSlipLabel');
+            const filePreview = document.getElementById('filePreview');
+            const fileName = document.getElementById('topupFileName');
+            const previewImage = document.getElementById('previewImage');
+
+            // File input change handler
+            fileInput.addEventListener('change', function(e) {
+                handleFileSelect(e.target.files[0]);
+            });
+
+            // Drag and drop functionality
+            fileLabel.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                fileLabel.classList.add('border-blue-500', 'bg-blue-50');
+                fileLabel.querySelector('p').textContent = 'ปล่อยไฟล์ที่นี่เพื่ออัพโหลด';
+            });
+
+            fileLabel.addEventListener('dragleave', function() {
+                fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
+                fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
+            });
+
+            fileLabel.addEventListener('drop', function(e) {
+                e.preventDefault();
+                fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
+                fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
+
+                if (e.dataTransfer.files.length > 0) {
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        // Handle file selection
+        function handleFileSelect(file) {
+            if (!file) return;
+
+            // Validate file type
+            if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ประเภทไฟล์ไม่ถูกต้อง',
+                    text: 'ไฟล์ต้องเป็นรูปภาพ JPG หรือ PNG เท่านั้น',
+                    confirmButtonColor: '#3b82f6'
+                });
+                document.getElementById('topupSlip').value = '';
+                return;
+            }
+
+            // Validate file size
+            if (file.size > MAX_FILE_SIZE) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ไฟล์มีขนาดใหญ่เกินไป',
+                    text: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
+                    confirmButtonColor: '#3b82f6'
+                });
+                document.getElementById('topupSlip').value = '';
+                return;
+            }
+
+            // Show file preview
+            const fileName = document.getElementById('topupFileName');
+            const filePreview = document.getElementById('filePreview');
+            const previewImage = document.getElementById('previewImage');
+
+            fileName.textContent = `📎 ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            filePreview.classList.remove('hidden');
+            updateProcessSteps(3);
+
+            // Show preview image
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                previewImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+
+            // Set file to input if it was dropped
+            if (!document.getElementById('topupSlip').files.length) {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                document.getElementById('topupSlip').files = dataTransfer.files;
+            }
+        }
+
+        // Setup amount validation
+        function setupAmountValidation() {
+            const amountInput = document.getElementById('topupAmount');
+            const submitBtn = document.getElementById('submitTopupBtn');
+
+            amountInput.addEventListener('input', function() {
+                const amount = parseFloat(this.value) || 0;
+                const bank = document.getElementById('topupBank').value;
+                const hasSlip = document.getElementById('topupSlip').files.length > 0;
+
+                // Validate amount
+                if (amount < 100) {
+                    this.style.borderColor = '#ef4444';
+                    this.style.backgroundColor = '#fef2f2';
+                } else {
+                    this.style.borderColor = '#10b981';
+                    this.style.backgroundColor = '#f0fdf4';
+                }
+
+                // Enable/disable submit button
+                submitBtn.disabled = !(amount >= 100 && bank && hasSlip);
+            });
+
+            // Also check when bank changes
+            document.getElementById('topupBank').addEventListener('change', function() {
+                const amount = parseFloat(amountInput.value) || 0;
+                const bank = this.value;
+                const hasSlip = document.getElementById('topupSlip').files.length > 0;
+                
+                submitBtn.disabled = !(amount >= 100 && bank && hasSlip);
+            });
+        }
+
+        // Google Apps Script Integration Functions
+        async function sendToGoogleSheets(data) {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                return result;
+            } catch (error) {
+                console.error('Google Sheets API Error:', error);
+                throw error;
+            }
+        }
+
+        // Transaction History Functions
+        function saveToLocalHistory(transaction) {
+            try {
+                let history = JSON.parse(localStorage.getItem('topupHistory') || '[]');
+                history.unshift(transaction);
+                
+                // เก็บประวัติล่าสุด 50 รายการ
+                if (history.length > 50) {
+                    history = history.slice(0, 50);
+                }
+                
+                localStorage.setItem('topupHistory', JSON.stringify(history));
+            } catch (error) {
+                console.error('Error saving to local history:', error);
+            }
+        }
+
+        // Format functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function generateTransactionId() {
+            const timestamp = Date.now();
+            const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+            return `TOP${timestamp}${random}`;
+        }
+
+        // Error handling functions
+        function handleNetworkError(error) {
+            console.error('Network error:', error);
+            
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                return 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
+            }
+            
+            if (error.message.includes('timeout')) {
+                return 'การเชื่อมต่อหมดเวลา กรุณาลองใหม่อีกครั้ง';
+            }
+            
+            return 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่อีกครั้ง';
+        }
+
+        // Validation functions
+        function validateTopupData(amount, bank, slip) {
+            const errors = [];
+            
+            if (!amount || amount < 100) {
+                errors.push('จำนวนเงินต้องไม่น้อยกว่า 100 บาท');
+            }
+            
+            if (amount > 1000000) {
+                errors.push('จำนวนเงินต้องไม่เกิน 1,000,000 บาท');
+            }
+            
+            if (!bank) {
+                errors.push('กรุณาเลือกธนาคาร');
+            }
+            
+            if (!slip) {
+                errors.push('กรุณาอัพโหลดสลิปโอนเงิน');
+            }
+            
+            return errors;
+        }
+
+        // Success notification
+        async function showSuccessNotification(transactionData) {
+            // แสดงการแจ้งเตือนแบบ Toast
+            const toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+
+            await toast.fire({
+                icon: 'success',
+                title: 'ส่งคำขอเติมเงินสำเร็จ',
+                text: `จำนวน ฿${formatCurrency(transactionData.amount)}`
+            });
+        }
+
+        // Debug functions (สำหรับการพัฒนา)
+        function debugLog(message, data = null) {
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.log(`[TOPUP DEBUG] ${message}`, data);
+            }
+        }
+
+        // Performance monitoring
+        function trackPerformance(actionName, startTime) {
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            debugLog(`Performance: ${actionName} took ${duration.toFixed(2)}ms`);
+        }
+
+        // Initialize performance tracking
+        const initStartTime = performance.now();
+        
+        // Track when page is fully loaded
+        window.addEventListener('load', () => {
+            trackPerformance('Page Load', initStartTime);
+        });
+
+        // Service Worker registration (for offline support - optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        debugLog('SW registered: ', registration);
+                    })
+                    .catch((registrationError) => {
+                        debugLog('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // Cleanup function
+        window.addEventListener('beforeunload', () => {
+            // Cleanup any ongoing operations
+            if (window.uploadController) {
+                window.uploadController.abort();
+            }
+        });
     </script>
 </body>
 </html>
