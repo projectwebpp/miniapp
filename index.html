@@ -18,18 +18,11 @@
             <div class="mb-6">
                 <i class="fas fa-mobile-alt text-6xl text-blue-500 mb-4"></i>
                 <h2 class="text-2xl font-bold text-gray-800 mb-2">แอปพลิเคชันสำหรับมือถือเท่านั้น</h2>
-                <p class="text-gray-600 mb-6">กรุณาเข้าใช้งานระบบออมทองผ่านมือถือหรือแท็บเล็ตเท่านั้น</p>
+                <p class="text-gray-600 mb-6">กำลังเปลี่ยนเส้นทางไปยัง LINE Developers...</p>
             </div>
-            <div class="text-left bg-gray-50 rounded-lg p-4 mb-6">
-                <h3 class="font-semibold text-gray-800 mb-2">วิธีการเข้าใช้งาน:</h3>
-                <ul class="text-sm text-gray-600 space-y-1">
-                    <li>• เปิดผ่าน LINE Official Account</li>
-                    <li>• ใช้งานบนมือถือหรือแท็บเล็ต</li>
-                    <li>• ตรวจสอบให้แน่ใจว่าเปิดผ่าน LIFF</li>
-                </ul>
-            </div>
+            <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
             <div class="text-xs text-gray-500">
-                <p>หากคุณใช้งานบนมือถืออยู่แล้ว กรุณารีเฟรชหน้าเว็บ</p>
+                <p>กรุณารอสักครู่...</p>
             </div>
         </div>
     </div>
@@ -240,7 +233,7 @@
             return (desktopOS && desktopBrowser) || (largeScreen && hasMouseInput);
         }
 
-        // แสดง Mobile Only Warning
+        // แสดง Mobile Only Warning และ Redirect ไป LINE Developers ทันที
         function showMobileOnlyWarning() {
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('mobileOnlyWarning').classList.remove('hidden');
@@ -249,8 +242,13 @@
             // ป้องกันการเข้าถึง console
             if (typeof console !== 'undefined') {
                 console.log('%c⚠️ การเข้าถึงระบบผ่าน PC ถูกจำกัด', 'color: red; font-size: 16px; font-weight: bold;');
-                console.log('%c🔒 กรุณาใช้งานผ่านมือถือหรือแท็บเล็ตเท่านั้น', 'color: orange; font-size: 14px;');
+                console.log('%c🔒 กำลังเปลี่ยนเส้นทางไปยัง LINE Developers...', 'color: orange; font-size: 14px;');
             }
+            
+            // Redirect ไปยัง LINE Developers ทันที
+            setTimeout(() => {
+                window.location.href = 'https://developers.line.biz/';
+            }, 1500); // รอ 1.5 วินาทีเพื่อให้ผู้ใช้เห็นข้อความ
         }
 
         // ตรวจสอบ LIFF Environment
@@ -273,7 +271,7 @@
                 viewportSize: `${window.innerWidth}x${window.innerHeight}`
             });
             
-            // บล็อกการเข้าถึงจาก PC
+            // บล็อกการเข้าถึงจาก PC และ redirect ทันที
             if (isPC && !isMobile) {
                 showMobileOnlyWarning();
                 return false;
@@ -452,7 +450,7 @@
             }
         }
 
-        // Monitor screen size changes
+        // Monitor screen size changes และ redirect ทันทีถ้าเป็น PC
         window.addEventListener('resize', function() {
             if (window.innerWidth > 1200) {
                 if (!document.getElementById('mobileOnlyWarning').classList.contains('hidden')) {
@@ -826,7 +824,7 @@
             }
         });
 
-        // Monitor viewport changes
+        // Monitor viewport changes และ redirect ทันทีถ้าเป็น PC
         window.addEventListener('orientationchange', function() {
             setTimeout(function() {
                 if (window.innerWidth > 1200) {
