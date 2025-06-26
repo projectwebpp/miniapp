@@ -34,24 +34,14 @@
         </div>
     </div>
 
-    <!-- Improved Loading Screen -->
-    <div id="loading" class="fixed inset-0 bg-gradient-to-br from-yellow-400 to-amber-500 z-50 flex items-center justify-center">
+    <!-- Loading Screen -->
+   <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
-            <div class="relative mb-6">
-                <i class="fas fa-coins text-8xl text-white animate-pulse"></i>
-                <div class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full animate-ping"></div>
-            </div>
-            <h2 class="text-white text-2xl font-bold mb-2">ระบบออมทอง</h2>
-            <p id="loadingMessage" class="text-white/90 mb-6">กำลังเริ่มต้นระบบ...</p>
-            
-            <!-- Enhanced Progress Bar -->
-            <div class="w-64 bg-white/20 rounded-full h-3 mb-4 overflow-hidden">
-                <div id="loadingProgress" class="bg-white h-3 rounded-full transition-all duration-700 ease-out transform origin-left" style="width: 0%"></div>
-            </div>
-            
-            <!-- Progress Percentage -->
-            <div class="text-white/80 text-sm">
-                <span id="loadingPercent">0%</span>
+            <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
+            <p class="text-gray-600">กำลังโหลด...</p>
+            <!-- เพิ่มแถบความคืบหน้า -->
+            <div class="w-48 bg-gray-200 rounded-full h-2 mt-4">
+                <div id="loadingProgress" class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
             </div>
         </div>
     </div> 
@@ -293,64 +283,29 @@
         let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let walletData = { balance: 0, transactions: [] };
 
-        // Optimized Loading progress tracker
+        // Loading progress tracker
         let loadingSteps = 0;
-        const totalSteps = 3; // ลดจำนวนขั้นตอน
-        const loadingMessages = [
-            'เชื่อมต่อระบบ...',
-            'โหลดข้อมูลผู้ใช้...',
-            'เสร็จสิ้น!'
-        ];
+        const totalSteps = 4; // จำนวนขั้นตอนการโหลด
 
-        function updateLoadingProgress(customMessage) {
+        function updateLoadingProgress() {
             loadingSteps++;
-            const progress = Math.min((loadingSteps / totalSteps) * 100, 100);
+            const progress = (loadingSteps / totalSteps) * 100;
             const progressBar = document.getElementById('loadingProgress');
-            const loadingMessage = document.getElementById('loadingMessage');
-            const loadingPercent = document.getElementById('loadingPercent');
-            
             if (progressBar) {
                 progressBar.style.width = progress + '%';
-            }
-            
-            if (loadingPercent) {
-                loadingPercent.textContent = Math.round(progress) + '%';
-            }
-            
-            if (loadingMessage) {
-                const message = customMessage || loadingMessages[loadingSteps - 1] || 'กำลังโหลด...';
-                loadingMessage.textContent = message;
             }
             
             // เมื่อโหลดเสร็จครบทุกขั้นตอน
             if (loadingSteps >= totalSteps) {
                 setTimeout(() => {
                     hideLoading();
-                }, 500); // ลดเวลาหน่วง
+                }, 200); // หน่วงเวลาเล็กน้อยเพื่อให้เห็นแถบความคืบหน้า 100%
             }
         }
 
         function hideLoading() {
-            const loadingElement = document.getElementById('loading');
-            const appElement = document.getElementById('app');
-            
-            // Smooth transition
-            loadingElement.style.opacity = '0';
-            loadingElement.style.transform = 'scale(0.95)';
-            
-            setTimeout(() => {
-                loadingElement.classList.add('hidden');
-                appElement.classList.remove('hidden');
-                appElement.style.opacity = '0';
-                appElement.style.transform = 'translateY(20px)';
-                
-                // Animate app entrance
-                setTimeout(() => {
-                    appElement.style.transition = 'all 0.3s ease-out';
-                    appElement.style.opacity = '1';
-                    appElement.style.transform = 'translateY(0)';
-                }, 50);
-            }, 300);
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
         }
 
         // Navigation function
@@ -395,7 +350,7 @@
             window.location.href = 'dashboard.html';
         }
 
-        // Initialize LIFF - Optimized version
+        // Initialize LIFF
         window.onload = async function() {
             // ตรวจสอบอุปกรณ์ก่อนโหลดแอป
             if (!performDeviceCheck()) {
@@ -403,8 +358,6 @@
             }
 
             try {
-                updateLoadingProgress('เชื่อมต่อ LINE...');
-                
                 // ตรวจสอบว่ามี LIFF_ID หรือไม่
                 if (!LIFF_ID) {
                     console.error('LIFF_ID not found in config.js');
@@ -412,12 +365,25 @@
                 }
                 
                 await liff.init({ liffId: LIFF_ID });
+                updateLoadingProgress(); // ขั้นตอนที่ 1: LIFF init
                 
-                // Start background data fetching (ไม่รอผลลัพธ์)
-                fetchDataInBackground();
+                // ดึงข้อมูลจาก Google Sheets ก่อน (สำคัญ!)
+                try {
+                    const pricesFetched = await fetchGoldPrices();
+                    console.log('Gold prices fetched:', pricesFetched);
+                } catch (priceError) {
+                    console.error('Failed to fetch gold prices:', priceError);
+                }
+                
+                try {
+                    await fetchBankAccounts();
+                    console.log('Bank accounts fetched');
+                } catch (bankError) {
+                    console.error('Failed to fetch bank accounts:', bankError);
+                }
                 
                 if (liff.isLoggedIn()) {
-                    updateLoadingProgress('โหลดข้อมูลผู้ใช้...');
+                    updateLoadingProgress(); // ขั้นตอนที่ 2: Login check
                     await initApp();
                 } else {
                     liff.login();
@@ -425,32 +391,15 @@
             } catch (err) {
                 console.error('LIFF init failed:', err);
                 // ยังคงแสดงแอปแม้มี error แต่แจ้งเตือนผู้ใช้
-                updateLoadingProgress('เสร็จสิ้น!');
-                setTimeout(() => {
-                    Swal.fire({
-                        title: 'เตือน',
-                        text: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง',
-                        icon: 'warning',
-                        confirmButtonText: 'ตกลง'
-                    });
-                }, 1000);
+                hideLoading();
+                Swal.fire({
+                    title: 'เตือน',
+                    text: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง',
+                    icon: 'warning',
+                    confirmButtonText: 'ตกลง'
+                });
             }
         };
-
-        // Background data fetching (ไม่บล็อก loading)
-        async function fetchDataInBackground() {
-            try {
-                // เริ่มดึงข้อมูลพื้นฐานทันที
-                if (typeof fetchGoldPrices === 'function') {
-                    fetchGoldPrices().catch(console.error);
-                }
-                if (typeof fetchBankAccounts === 'function') {
-                    fetchBankAccounts().catch(console.error);
-                }
-            } catch (error) {
-                console.error('Background fetch error:', error);
-            }
-        }
 
         // Monitor screen size changes
         window.addEventListener('resize', function() {
@@ -472,7 +421,7 @@
             e.preventDefault();
         });
 
-        // Initialize App (ปรับให้เร็วขึ้นและแสดงข้อมูลหลักก่อน)
+        // Initialize App (ปรับให้เร็วขึ้น)
         async function initApp() {
             try {
                 const profile = await liff.getProfile();
@@ -481,52 +430,42 @@
                     name: profile.displayName,
                     picture: profile.pictureUrl
                 };
-                
-                // อัพเดท UI ทันที
                 document.getElementById('userName').textContent = userData.name;
                 document.getElementById('userPic').src = userData.picture;
+                updateLoadingProgress(); // ขั้นตอนที่ 3: Profile loaded
                 
-                updateLoadingProgress('เสร็จสิ้น!');
+                // โหลดข้อมูลแบบ parallel และไม่รอให้เสร็จทั้งหมด
+                const dataPromises = [
+                    loadGoldData(),
+                    loadTransactions(),
+                    loadWalletData()
+                ];
                 
-                // โหลดข้อมูลใน background (หลังจากแสดงแอปแล้ว)
-                setTimeout(() => {
-                    loadDataInBackground();
-                }, 100);
+                // รอเพียงข้อมูลหลักเท่านั้น
+                await Promise.race([
+                    Promise.all(dataPromises),
+                    new Promise(resolve => setTimeout(resolve, 1000)) // timeout 1 วินาที
+                ]);
+                
+                updateLoadingProgress(); // ขั้นตอนที่ 4: Data loaded
+                
+                // โหลดข้อมูลที่เหลือใน background
+                Promise.all(dataPromises).catch(console.error);
                 
             } catch (error) {
                 console.error('Error initializing app:', error);
                 // แสดงแอปแม้มี error
-                updateLoadingProgress('เสร็จสิ้น!');
+                hideLoading();
+                // Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
         }
 
-        // Background data loading (หลังจากแสดงแอปแล้ว)
-        async function loadDataInBackground() {
-            try {
-                // โหลดข้อมูลแบบ parallel
-                const promises = [
-                    loadGoldData().catch(console.error),
-                    loadTransactions().catch(console.error),
-                    loadWalletData().catch(console.error)
-                ];
-                
-                // รอให้โหลดเสร็จหรือ timeout ใน 3 วินาที
-                await Promise.race([
-                    Promise.allSettled(promises),
-                    new Promise(resolve => setTimeout(resolve, 3000))
-                ]);
-                
-            } catch (error) {
-                console.error('Background loading error:', error);
-            }
-        }
-
-        // Fixed API call with better error handling and faster timeout
+        // Fixed API call with better error handling and CORS mode
         async function makeApiCall(url, options = {}) {
             const defaultOptions = {
                 method: 'GET',
-                mode: 'cors',
-                credentials: 'omit',
+                mode: 'cors', // Explicitly set CORS mode
+                credentials: 'omit', // Don't send cookies
                 headers: {
                     'Accept': 'application/json',
                 },
@@ -536,7 +475,7 @@
             
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // ลด timeout เป็น 5 วินาที
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
                 
                 const response = await fetch(url, {
                     ...finalOptions,
@@ -566,7 +505,7 @@
             }
         }
 
-        // Load Gold Data (improved with silent error handling)
+        // Load Gold Data (improved with better error handling)
         async function loadGoldData() {
             try {
                 if (!API_URL) {
@@ -599,15 +538,28 @@
                 }
             } catch (error) {
                 console.error('Error loading gold data:', error);
-                // แสดงข้อมูลเริ่มต้นและไม่แสดง error popup
+                // แสดงข้อมูลเริ่มต้นและแจ้งเตือน
                 document.getElementById('totalGold').textContent = '0 กรัม';
                 document.getElementById('totalValue').textContent = 'มูลค่า: ฿0';
                 document.getElementById('barGold').textContent = '0 กรัม';
                 document.getElementById('ornamentGold').textContent = '0 กรัม';
+                
+                // แจ้งเตือนผู้ใช้เฉพาะเมื่อ error ไม่ใช่ timeout
+                if (error.message !== 'Request timeout') {
+                    Swal.fire({
+                        title: 'ไม่สามารถโหลดข้อมูลทองได้',
+                        text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
+                        icon: 'warning',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
             }
         }
 
-        // Load Wallet Data (improved with silent error handling)
+        // Load Wallet Data (improved with better error handling)
         async function loadWalletData() {
             try {
                 if (!API_URL) {
@@ -690,10 +642,22 @@
                 console.error('Error loading wallet data:', error);
                 document.getElementById('walletBalance').textContent = '฿0.00';
                 document.getElementById('walletHistory').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
+                
+                if (error.message !== 'Request timeout') {
+                    Swal.fire({
+                        title: 'ไม่สามารถโหลดข้อมูลกระเป๋าเงินได้',
+                        text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
+                        icon: 'warning',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
             }
         }
 
-        // Load Transactions (improved with silent error handling)
+        // Load Transactions (improved with better error handling)
         async function loadTransactions() {
             try {
                 if (!API_URL) {
@@ -741,6 +705,18 @@
             } catch (error) {
                 console.error('Error loading transactions:', error);
                 document.getElementById('transactionList').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
+                
+                if (error.message !== 'Request timeout') {
+                    Swal.fire({
+                        title: 'ไม่สามารถโหลดประวัติการทำรายการได้',
+                        text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
+                        icon: 'warning',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }
             }
         }
 
@@ -847,74 +823,6 @@
         document.addEventListener('gestureend', function(e) {
             e.preventDefault();
         });
-
-        // Add CSS for smooth transitions and tab styles
-        const style = document.createElement('style');
-        style.textContent = `
-            #loading {
-                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-            }
-            
-            #app {
-                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-            }
-            
-            #loadingProgress {
-                will-change: width;
-            }
-            
-            .card-hover, .btn-animate {
-                will-change: transform;
-                transform: translateZ(0);
-            }
-            
-            /* Tab Styles */
-            .tabs {
-                background: white;
-                border-top: 1px solid #e5e7eb;
-                position: fixed !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                z-index: 10 !important;
-                box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-            }
-            
-            .tab {
-                color: #6b7280;
-                transition: all 0.2s ease;
-                border-bottom: 3px solid transparent;
-                padding: 12px 8px !important;
-                font-size: 14px;
-            }
-            
-            .tab:hover {
-                color: #374151;
-                background-color: #f9fafb;
-            }
-            
-            .tab-active {
-                color: #f59e0b !important;
-                border-bottom-color: #f59e0b !important;
-                background-color: #fffbeb;
-            }
-            
-            .btn-animate:active {
-                transform: scale(0.95);
-            }
-            
-            .card-hover:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            }
-            
-            /* Page container styles */
-            .page-container {
-                padding-bottom: 90px !important; /* เพิ่มพื้นที่ด้านล่างสำหรับ fixed tabs */
-                min-height: calc(100vh - 140px); /* ปรับความสูงให้เหมาะสม */
-            }
-        `;
-        document.head.appendChild(style);
     </script>
 </body>
 </html>
