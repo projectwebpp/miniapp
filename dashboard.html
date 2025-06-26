@@ -23,11 +23,25 @@
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
 
-    <!-- Loading Screen -->
-    <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+    <!-- Optimized Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-gradient-to-br from-yellow-400 to-amber-500 z-50 flex items-center justify-center">
         <div class="text-center">
-            <i class="fas fa-chart-line text-6xl text-yellow-500 animate-pulse mb-4"></i>
-            <p class="text-gray-600">กำลังโหลดราคาทอง...</p>
+            <div class="relative mb-6">
+                <i class="fas fa-chart-line text-8xl text-white animate-bounce"></i>
+                <div class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full animate-ping"></div>
+            </div>
+            <h2 class="text-white text-xl font-bold mb-2">ราคาทอง</h2>
+            <p id="loadingMessage" class="text-white/90 mb-6">กำลังโหลดข้อมูลราคา...</p>
+            
+            <!-- Enhanced Progress Bar -->
+            <div class="w-64 bg-white/20 rounded-full h-3 mb-4 overflow-hidden">
+                <div id="loadingProgress" class="bg-white h-3 rounded-full transition-all duration-700 ease-out transform origin-left" style="width: 0%"></div>
+            </div>
+            
+            <!-- Progress Percentage -->
+            <div class="text-white/80 text-sm">
+                <span id="loadingPercent">0%</span>
+            </div>
         </div>
     </div>
 
@@ -126,6 +140,65 @@
     <script>
         let goldPriceChart = null;
         let chartPeriod = '1D';
+
+        // Optimized Loading System
+        let loadingSteps = 0;
+        const totalSteps = 2; // ลดจำนวนขั้นตอน
+        const loadingMessages = [
+            'โหลดราคาทอง...',
+            'เสร็จสิ้น!'
+        ];
+
+        function updateLoadingProgress(customMessage) {
+            loadingSteps++;
+            const progress = Math.min((loadingSteps / totalSteps) * 100, 100);
+            const progressBar = document.getElementById('loadingProgress');
+            const loadingMessage = document.getElementById('loadingMessage');
+            const loadingPercent = document.getElementById('loadingPercent');
+            
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+            }
+            
+            if (loadingPercent) {
+                loadingPercent.textContent = Math.round(progress) + '%';
+            }
+            
+            if (loadingMessage) {
+                const message = customMessage || loadingMessages[loadingSteps - 1] || 'กำลังโหลด...';
+                loadingMessage.textContent = message;
+            }
+            
+            // เมื่อโหลดเสร็จครับทุกขั้นตอน
+            if (loadingSteps >= totalSteps) {
+                setTimeout(() => {
+                    hideLoading();
+                }, 300); // ลดเวลาหน่วง
+            }
+        }
+
+        function hideLoading() {
+            const loadingElement = document.getElementById('loading');
+            const appElement = document.getElementById('app');
+            
+            // Smooth transition
+            loadingElement.style.opacity = '0';
+            loadingElement.style.transform = 'scale(0.95)';
+            
+            setTimeout(() => {
+                loadingElement.classList.add('hidden');
+                appElement.classList.remove('hidden');
+                appElement.style.opacity = '0';
+                appElement.style.transform = 'translateY(20px)';
+                
+                // Animate app entrance
+                setTimeout(() => {
+                    appElement.style.transition = 'all 0.3s ease-out';
+                    appElement.style.opacity = '1';
+                    appElement.style.transform = 'translateY(0)';
+                }, 50);
+            }, 300);
+        }
 
         // Go back function
         function goBack() {
@@ -339,7 +412,7 @@
                     throw new Error('Failed to fetch prices');
                 }
             } catch (error) {
-                //console.error('Error refreshing prices:', error);
+                console.error('Error refreshing prices:', error);
                 refreshBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>เกิดข้อผิดพลาด';
                 setTimeout(() => {
                     refreshBtn.innerHTML = originalText;
@@ -348,36 +421,138 @@
             }
         }
 
-        // Initialize LIFF
+        // เริ่มต้น Progress ทันที
+        function startProgress() {
+            updateLoadingProgress('เริ่มต้นระบบ...');
+        }
+
+        // เริ่มต้นระบบทันทีเมื่อโหลดหน้า
+        document.addEventListener('DOMContentLoaded', function() {
+            startProgress();
+        });
+
+        // Optimized LIFF Initialize
         window.onload = async function() {
             try {
-                await liff.init({ liffId: LIFF_ID });
-                if (liff.isLoggedIn()) {
-                    const pricesFetched = await fetchGoldPrices();
-                    //console.log('Initial price fetch successful:', pricesFetched);
-                    initApp();
+                updateLoadingProgress('โหลดราคาทอง...');
+                
+                if (typeof liff !== 'undefined' && window.LIFF_ID) {
+                    await liff.init({ liffId: window.LIFF_ID });
+                    
+                    if (liff.isLoggedIn()) {
+                        // โหลดราคาทองใน background (ไม่รอผลลัพธ์)
+                        if (typeof fetchGoldPrices === 'function') {
+                            fetchGoldPrices().catch(console.error);
+                        }
+                        
+                        updateLoadingProgress('เสร็จสิ้น!');
+                        
+                        // แสดงแอปทันที
+                        setTimeout(() => {
+                            initApp();
+                        }, 100);
+                    } else {
+                        liff.login();
+                    }
                 } else {
-                    liff.login();
+                    // ถ้าไม่มี LIFF ก็ให้แสดงแอปเลย (สำหรับ demo)
+                    console.warn('LIFF not available, showing demo mode');
+                    updateLoadingProgress('เสร็จสิ้น!');
+                    setTimeout(() => {
+                        initDemoApp();
+                    }, 100);
                 }
             } catch (err) {
-                //console.error('LIFF init failed:', err);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+                console.error('LIFF init failed:', err);
+                // แสดงแอปแม้เกิด error
+                updateLoadingProgress('เสร็จสิ้น!');
+                setTimeout(() => {
+                    initDemoApp();
+                }, 100);
             }
         };
 
-        // Initialize App
+        // Initialize App (ปรับให้เร็วขึ้น)
         async function initApp() {
             try {
+                // แสดงข้อมูลเริ่มต้นทันที
                 updateDashboard();
-                initChart();
                 
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
+                // สร้างกราฟใน background
+                setTimeout(() => {
+                    initChart();
+                }, 100);
+                
             } catch (error) {
-                //console.error('Error initializing app:', error);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+                console.error('Error initializing app:', error);
+                // แสดงแอปแม้มี error
+                initDemoApp();
             }
         }
+
+        // Demo mode สำหรับกรณีที่ไม่มี LIFF หรือเกิด error
+        function initDemoApp() {
+            // ตั้งค่าราคาทอง demo
+            if (typeof currentGoldPrices === 'undefined') {
+                window.currentGoldPrices = {
+                    bar: {
+                        buyPrice: 31500,
+                        sellPrice: 31000
+                    },
+                    ornament: {
+                        buyPrice: 32000,
+                        sellPrice: 30500
+                    }
+                };
+            }
+            
+            updateDashboard();
+            initChart();
+        }
+
+        // Fallback functions สำหรับกรณีที่ไม่มีไฟล์ utils.js
+        if (typeof formatCurrency === 'undefined') {
+            window.formatCurrency = function(amount) {
+                return amount.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+            };
+        }
+
+        // Add CSS for smooth transitions
+        const style = document.createElement('style');
+        style.textContent = `
+            #loading {
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            }
+            
+            #app {
+                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+            }
+            
+            #loadingProgress {
+                will-change: width;
+            }
+            
+            .card-hover, .btn-animate {
+                will-change: transform;
+                transform: translateZ(0);
+                transition: all 0.2s ease;
+            }
+            
+            .card-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            }
+            
+            .btn-animate:active {
+                transform: scale(0.95);
+            }
+            
+            /* Page container styles */
+            .page-container {
+                padding-bottom: 20px;
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
