@@ -154,7 +154,7 @@
         </div>
 
         <!-- Tab Navigation -->
-        <div class="tabs fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t z-10" style="position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 50 !important;">
+        <div class="tabs fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t z-10">
             <div class="flex">
                 <button id="portfolioTab" onclick="switchTab('portfolio')" class="tab flex-1 py-3 text-center font-semibold tab-active btn-animate">
                     <i class="fas fa-chart-pie mr-2"></i>พอร์ตโฟลิโอ
@@ -911,18 +911,7 @@
             /* Page container styles */
             .page-container {
                 padding-bottom: 90px !important; /* เพิ่มพื้นที่ด้านล่างสำหรับ fixed tabs */
-                min-height: calc(100vh - 140px) !important; /* ปรับความสูงให้เหมาะสม */
-            }
-            
-            /* Ensure body has proper padding for fixed tabs */
-            body {
-                padding-bottom: 0 !important;
-            }
-            
-            /* Fix z-index hierarchy */
-            #app {
-                position: relative;
-                z-index: 1;
+                min-height: calc(100vh - 140px); /* ปรับความสูงให้เหมาะสม */
             }
         `;
         document.head.appendChild(style);
