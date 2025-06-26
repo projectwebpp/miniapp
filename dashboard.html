@@ -23,25 +23,11 @@
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
 
-    <!-- Optimized Loading Screen -->
+    <!-- Minimal Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-gradient-to-br from-yellow-400 to-amber-500 z-50 flex items-center justify-center">
         <div class="text-center">
-            <div class="relative mb-6">
-                <i class="fas fa-chart-line text-8xl text-white animate-bounce"></i>
-                <div class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full animate-ping"></div>
-            </div>
-            <h2 class="text-white text-xl font-bold mb-2">ราคาทอง</h2>
-            <p id="loadingMessage" class="text-white/90 mb-6">กำลังโหลดข้อมูลราคา...</p>
-            
-            <!-- Enhanced Progress Bar -->
-            <div class="w-64 bg-white/20 rounded-full h-3 mb-4 overflow-hidden">
-                <div id="loadingProgress" class="bg-white h-3 rounded-full transition-all duration-700 ease-out transform origin-left" style="width: 0%"></div>
-            </div>
-            
-            <!-- Progress Percentage -->
-            <div class="text-white/80 text-sm">
-                <span id="loadingPercent">0%</span>
-            </div>
+            <i class="fas fa-chart-line text-6xl text-white animate-pulse"></i>
+            <p class="text-white text-lg mt-4">ราคาทอง</p>
         </div>
     </div>
 
@@ -431,83 +417,62 @@
             startProgress();
         });
 
-        // Optimized LIFF Initialize
+        // Ultra-fast LIFF Initialize (ไม่รอ LIFF)
         window.onload = async function() {
+            // แสดงแอปทันทีโดยไม่รอ LIFF
+            initAppImmediately();
+            
+            // เริ่ม LIFF ใน background
             try {
-                updateLoadingProgress('โหลดราคาทอง...');
-                
                 if (typeof liff !== 'undefined' && window.LIFF_ID) {
-                    await liff.init({ liffId: window.LIFF_ID });
-                    
-                    if (liff.isLoggedIn()) {
-                        // โหลดราคาทองใน background (ไม่รอผลลัพธ์)
-                        if (typeof fetchGoldPrices === 'function') {
-                            fetchGoldPrices().catch(console.error);
+                    liff.init({ liffId: window.LIFF_ID }).then(() => {
+                        if (liff.isLoggedIn()) {
+                            // โหลดราคาทองใน background หลังจาก LIFF เริ่มต้นแล้ว
+                            if (typeof fetchGoldPrices === 'function') {
+                                fetchGoldPrices().then(() => {
+                                    // อัพเดทข้อมูลใหม่เมื่อโหลดเสร็จ
+                                    updateDashboard();
+                                    initChart();
+                                }).catch(console.error);
+                            }
                         }
-                        
-                        updateLoadingProgress('เสร็จสิ้น!');
-                        
-                        // แสดงแอปทันที
-                        setTimeout(() => {
-                            initApp();
-                        }, 100);
-                    } else {
-                        liff.login();
-                    }
-                } else {
-                    // ถ้าไม่มี LIFF ก็ให้แสดงแอปเลย (สำหรับ demo)
-                    console.warn('LIFF not available, showing demo mode');
-                    updateLoadingProgress('เสร็จสิ้น!');
-                    setTimeout(() => {
-                        initDemoApp();
-                    }, 100);
+                    }).catch(console.error);
                 }
             } catch (err) {
                 console.error('LIFF init failed:', err);
-                // แสดงแอปแม้เกิด error
-                updateLoadingProgress('เสร็จสิ้น!');
-                setTimeout(() => {
-                    initDemoApp();
-                }, 100);
+                // ไม่ต้องทำอะไร แอปยังใช้งานได้ด้วยข้อมูล demo
             }
         };
 
-        // Initialize App (ปรับให้เร็วขึ้น)
-        async function initApp() {
+        // Initialize App Immediately (แสดงทันทีด้วยข้อมูลเริ่มต้น)
+        function initAppImmediately() {
             try {
-                // แสดงข้อมูลเริ่มต้นทันที
+                // ตั้งค่าราคาทองเริ่มต้น
+                if (typeof currentGoldPrices === 'undefined') {
+                    window.currentGoldPrices = {
+                        bar: {
+                            buyPrice: 31500,
+                            sellPrice: 31000
+                        },
+                        ornament: {
+                            buyPrice: 32000,
+                            sellPrice: 30500
+                        }
+                    };
+                }
+                
+                // แสดงข้อมูลทันที
                 updateDashboard();
                 
-                // สร้างกราฟใน background
-                setTimeout(() => {
+                // สร้างกราฟใน background (ไม่บล็อก UI)
+                requestAnimationFrame(() => {
                     initChart();
-                }, 100);
+                });
                 
             } catch (error) {
-                console.error('Error initializing app:', error);
-                // แสดงแอปแม้มี error
-                initDemoApp();
+                console.error('Error initializing app immediately:', error);
+                // แม้เกิด error ก็ยังแสดงแอปได้
             }
-        }
-
-        // Demo mode สำหรับกรณีที่ไม่มี LIFF หรือเกิด error
-        function initDemoApp() {
-            // ตั้งค่าราคาทอง demo
-            if (typeof currentGoldPrices === 'undefined') {
-                window.currentGoldPrices = {
-                    bar: {
-                        buyPrice: 31500,
-                        sellPrice: 31000
-                    },
-                    ornament: {
-                        buyPrice: 32000,
-                        sellPrice: 30500
-                    }
-                };
-            }
-            
-            updateDashboard();
-            initChart();
         }
 
         // Fallback functions สำหรับกรณีที่ไม่มีไฟล์ utils.js
@@ -517,19 +482,16 @@
             };
         }
 
-        // Add CSS for smooth transitions
+        // Add CSS for instant loading
         const style = document.createElement('style');
         style.textContent = `
             #loading {
-                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+                transition: opacity 0.2s ease-out;
             }
             
             #app {
-                transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-            }
-            
-            #loadingProgress {
-                will-change: width;
+                opacity: 1 !important;
+                transform: none !important;
             }
             
             .card-hover, .btn-animate {
@@ -550,6 +512,18 @@
             /* Page container styles */
             .page-container {
                 padding-bottom: 20px;
+            }
+            
+            /* Loading states for data that hasn't loaded yet */
+            .loading-shimmer {
+                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+                background-size: 200% 100%;
+                animation: shimmer 1.5s infinite;
+            }
+            
+            @keyframes shimmer {
+                0% { background-position: -200% 0; }
+                100% { background-position: 200% 0; }
             }
         `;
         document.head.appendChild(style);
