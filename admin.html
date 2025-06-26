@@ -100,11 +100,11 @@
         </button>
     </div>
 
-    <!-- Loading Screen -->
+    <!-- Ultra Fast Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
-            <i class="fas fa-cog text-6xl text-purple-500 animate-spin mb-4"></i>
-            <p class="text-gray-600">กำลังโหลด...</p>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-2"></div>
+            <p class="text-gray-600 text-xs">กำลังโหลด...</p>
         </div>
     </div>
 
@@ -221,7 +221,6 @@
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
-       
         // Global Variables
         let userData = {};
         let pendingTransactions = [];
@@ -229,6 +228,12 @@
         let allTransactions = [];
         let systemStats = {};
         let currentTab = 'pending';
+
+        // Fast loading management
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
 
         // Utility Functions
         function formatCurrency(amount) {
@@ -1173,33 +1178,47 @@
             }
         }
 
-        // Initialize LIFF
+        // Initialize LIFF with ultra fast loading
         window.onload = async function() {
             try {
-                // ตรวจสอบว่ามี LIFF_ID หรือไม่
-                if (!LIFF_ID || LIFF_ID === 'YOUR_LIFF_ID_HERE') {
-                    console.warn('LIFF_ID not configured, starting in demo mode');
-                    initApp(); // เริ่มต้นแอปโดยไม่ใช้ LIFF
+                // Show app immediately
+                setTimeout(hideLoading, 20);
+
+                // Check LIFF_ID configuration
+                if (typeof LIFF_ID === 'undefined' || !LIFF_ID || LIFF_ID === 'YOUR_LIFF_ID' || LIFF_ID.trim() === '') {
+                    console.warn('LIFF_ID not properly configured, starting in demo mode');
+                    initApp();
                     return;
                 }
 
-                await liff.init({ liffId: LIFF_ID });
-                if (liff.isLoggedIn()) {
-                    initApp();
-                } else {
-                    liff.login();
-                }
-            } catch (err) {
-                console.error('LIFF init failed:', err);
-                // ในกรณีที่ LIFF ล้มเหลว ให้เริ่มต้นแอปในโหมด demo
+                // Initialize app immediately
                 initApp();
+
+                // Initialize LIFF in background
+                liff.init({ liffId: LIFF_ID }).then(() => {
+                    if (liff.isLoggedIn()) {
+                        // Reload data with real user
+                        loadPendingTransactions();
+                        loadPendingWithdrawals();
+                        loadSystemStats();
+                    } else {
+                        liff.login();
+                    }
+                }).catch(err => {
+                    console.error('LIFF init failed:', err);
+                    // Continue with demo mode
+                });
+
+            } catch (err) {
+                console.error('Initialization failed:', err);
+                setTimeout(hideLoading, 20);
             }
         };
 
-        // Initialize App
+        // Initialize App with ultra fast execution
         async function initApp() {
             try {
-                // ตั้งค่าข้อมูลผู้ใช้
+                // Set user data
                 if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
                     userData = {
@@ -1208,7 +1227,7 @@
                         picture: profile.pictureUrl
                     };
                 } else {
-                    // โหมด demo
+                    // Demo mode
                     userData = {
                         userId: 'demo-admin',
                         name: 'Demo Admin',
@@ -1216,35 +1235,27 @@
                     };
                 }
 
-                // ตรวจสอบการกำหนดค่า API
+                // Check API configuration
                 if (!API_URL || API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'การกำหนดค่า',
-                        text: 'กรุณาตั้งค่า API_URL ในส่วนต้นของไฟล์',
-                        confirmButtonText: 'ตกลง'
-                    });
+                    console.warn('API_URL not configured');
                 }
 
-                // โหลดข้อมูลเริ่มต้น
-                await loadPendingTransactions();
-                await loadPendingWithdrawals();
-                await loadSystemStats();
+                // Load initial data in background
+                Promise.all([
+                    loadPendingTransactions(),
+                    loadPendingWithdrawals(),
+                    loadSystemStats()
+                ]).catch(err => {
+                    console.warn('Failed to load some data:', err);
+                });
                 
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                
-                // ตั้งค่าแท็บเริ่มต้น
+                // Set default tab
                 switchTab('pending');
                 
             } catch (error) {
                 console.error('Error initializing app:', error);
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้ กรุณาตรวจสอบการเชื่อมต่อ', 'error');
             }
         }
     </script>
 </body>
-</html>    
+</html>
