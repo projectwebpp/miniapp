@@ -21,11 +21,11 @@
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
 
-    <!-- Loading Screen -->
+    <!-- Loading Screen - Simplified -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
-            <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
-            <p class="text-gray-600">กำลังโหลด...</p>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+            <p class="text-gray-600 text-sm">กำลังโหลด...</p>
         </div>
     </div>
 
@@ -163,6 +163,27 @@
         // Go back function
         function goBack() {
             window.history.back();
+        }
+
+        // Hide loading screen immediately when content is ready
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
+        // Show loading with timeout fallback
+        function showLoadingWithTimeout() {
+            const loadingElement = document.getElementById('loading');
+            const appElement = document.getElementById('app');
+            
+            // Show loading
+            loadingElement.classList.remove('hidden');
+            appElement.classList.add('hidden');
+            
+            // Auto-hide after 3 seconds as fallback
+            setTimeout(() => {
+                hideLoading();
+            }, 3000);
         }
 
         // Validation functions
@@ -429,7 +450,7 @@
             }
         }
 
-        // Load Gold Data
+        // Load Gold Data with faster execution
         async function loadGoldData() {
             try {
                 const response = await fetch(`${API_URL}?action=getBalance&userId=${userData.userId}`);
@@ -443,27 +464,42 @@
                 }
             } catch (error) {
                 console.error('Error loading gold data:', error);
+                // Continue even if gold data fails
             }
         }
 
-        // Initialize LIFF
+        // Initialize LIFF with optimized loading
         window.onload = async function() {
             try {
+                // Show app immediately with placeholder data
+                setTimeout(() => {
+                    hideLoading();
+                }, 100);
+
                 await liff.init({ liffId: LIFF_ID });
                 if (liff.isLoggedIn()) {
-                    const pricesFetched = await fetchGoldPrices();
-                    console.log('Initial price fetch successful:', pricesFetched);
+                    // Start initialization without waiting for prices
                     initApp();
+                    
+                    // Fetch prices in background
+                    fetchGoldPrices().then(pricesFetched => {
+                        console.log('Price fetch completed:', pricesFetched);
+                        updatePriceDisplay();
+                        updateSellPrice();
+                    }).catch(err => {
+                        console.warn('Price fetch failed, using default values:', err);
+                    });
                 } else {
                     liff.login();
                 }
             } catch (err) {
                 console.error('LIFF init failed:', err);
+                hideLoading();
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
             }
         };
 
-        // Initialize App
+        // Initialize App with faster execution
         async function initApp() {
             try {
                 const profile = await liff.getProfile();
@@ -472,37 +508,38 @@
                     name: profile.displayName,
                     picture: profile.pictureUrl
                 };
-                window.userData = userData; // Make available globally
+                window.userData = userData;
                 
-                await loadGoldData();
-                updateSellPrice();
-                updatePriceDisplay();
+                // Load data in background, don't wait
+                loadGoldData().then(() => {
+                    // Check if user has any gold after data loads
+                    if (currentGoldData.totalGold <= 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'ไม่มีทองคำในระบบ',
+                            text: 'คุณยังไม่มีทองคำในระบบ กรุณาซื้อทองก่อน',
+                            confirmButtonText: 'ไปซื้อทอง',
+                            showCancelButton: true,
+                            cancelButtonText: 'กลับหน้าหลัก'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = 'buy.html';
+                            } else {
+                                window.location.href = 'index.html';
+                            }
+                        });
+                        return;
+                    }
+                });
                 
-                // Check if user has any gold
-                if (currentGoldData.totalGold <= 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'ไม่มีทองคำในระบบ',
-                        text: 'คุณยังไม่มีทองคำในระบบ กรุณาซื้อทองก่อน',
-                        confirmButtonText: 'ไปซื้อทอง',
-                        showCancelButton: true,
-                        cancelButtonText: 'กลับหน้าหลัก'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = 'buy.html';
-                        } else {
-                            window.location.href = 'index.html';
-                        }
-                    });
-                    return;
-                }
-                
-                // Set up event listeners
+                // Set up event listeners immediately
                 document.getElementById('sellAmount').addEventListener('input', calculateSellTotal);
                 document.getElementById('sellPrice').addEventListener('input', calculateSellTotal);
                 
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
+                // Initialize UI with default values
+                updateSellPrice();
+                updatePriceDisplay();
+                
             } catch (error) {
                 console.error('Error initializing app:', error);
                 Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
