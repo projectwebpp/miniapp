@@ -187,12 +187,21 @@
                 
                 console.log('Bank accounts response:', data);
                 
-                if (data.success && data.banks) {
-                    window.BANK_ACCOUNTS = data.banks;
-                    console.log('Bank accounts loaded:', window.BANK_ACCOUNTS);
+                if (data.success && data.bankAccounts) {
+                    // Convert array to object format for easier access
+                    window.BANK_ACCOUNTS = {};
+                    
+                    data.bankAccounts.forEach(bank => {
+                        window.BANK_ACCOUNTS[bank.bankName] = {
+                            account: bank.accountNumber,
+                            name: bank.accountName
+                        };
+                    });
+                    
+                    console.log('Bank accounts converted and loaded:', window.BANK_ACCOUNTS);
                     return true;
                 } else {
-                    console.error('Failed to fetch bank accounts:', data.message);
+                    console.error('Failed to fetch bank accounts:', data.message || 'No bank accounts data');
                     return false;
                 }
             } catch (error) {
@@ -247,15 +256,13 @@
                     const bankData = window.BANK_ACCOUNTS[selectedBank];
                     console.log('Selected bank data from exec:', bankData);
                     
-                    if (typeof bankData === 'string') {
-                        // Old format: just account number as string
-                        accountNumberField.value = bankData;
-                        accountNameField.value = 'กรุณาอัพเดทข้อมูลในฐานข้อมูล';
-                    } else if (typeof bankData === 'object') {
-                        // New format: object with account and name
-                        accountNumberField.value = bankData.account || bankData.accountNumber || '';
-                        accountNameField.value = bankData.name || bankData.accountName || '';
-                    }
+                    // Use the converted format from exec
+                    accountNumberField.value = bankData.account || '';
+                    accountNameField.value = bankData.name || '';
+                    
+                    // Clear placeholders when data is available
+                    accountNumberField.placeholder = 'เลขที่บัญชีจะแสดงอัตโนมัติ';
+                    accountNameField.placeholder = 'ชื่อบัญชีจะแสดงอัตโนมัติ';
                 } else {
                     // No data available
                     accountNumberField.value = '';
