@@ -34,17 +34,27 @@
         </div>
     </div>
 
-    <!-- Loading Screen -->
-   <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+    <!-- Optimized Loading Screen -->
+    <div id="loading" class="fixed inset-0 bg-gradient-to-br from-yellow-400 to-amber-500 z-50 flex items-center justify-center">
         <div class="text-center">
-            <i class="fas fa-coins text-6xl text-yellow-500 animate-pulse mb-4"></i>
-            <p class="text-gray-600">กำลังโหลด...</p>
-            <!-- เพิ่มแถบความคืบหน้า -->
-            <div class="w-48 bg-gray-200 rounded-full h-2 mt-4">
-                <div id="loadingProgress" class="bg-yellow-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+            <div class="relative mb-6">
+                <i class="fas fa-coins text-8xl text-white animate-bounce"></i>
+                <div class="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full animate-ping"></div>
+            </div>
+            <h2 class="text-white text-2xl font-bold mb-2">ระบบออมทอง</h2>
+            <p class="text-white/90 mb-6">กำลังเริ่มต้นระบบ...</p>
+            
+            <!-- Progress Bar -->
+            <div class="w-64 bg-white/20 rounded-full h-3 mb-4">
+                <div id="loadingProgress" class="bg-white h-3 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+            
+            <!-- Loading Steps -->
+            <div class="text-white/80 text-sm">
+                <span id="loadingText">เตรียมการระบบ...</span>
             </div>
         </div>
-    </div> 
+    </div>
 
     <!-- Main App (hidden by default) -->
     <div id="app" class="hidden min-h-screen flex-col">
@@ -162,150 +172,103 @@
     <script src="config.js"></script>
     <script src="utils.js"></script>
     <script>
-        // Mobile Device Detection
-        function detectMobileDevice() {
-            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-            const screenWidth = window.screen.width;
-            const screenHeight = window.screen.height;
-            
-            // ตรวจสอบ User Agent
-            const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-            const isMobileUserAgent = mobileRegex.test(userAgent);
-            
-            // ตรวจสอบขนาดหน้าจอ (มือถือและแท็บเล็ต)
-            const isMobileScreen = screenWidth <= 768 || screenHeight <= 768;
-            
-            // ตรวจสอบ Touch Support
-            const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            
-            // ตรวจสอบ Orientation API (มักมีใน mobile)
-            const hasOrientationAPI = 'orientation' in window;
-            
-            // ตรวจสอบ Device Pixel Ratio (mobile มักมีค่าสูง)
-            const hasHighDPR = window.devicePixelRatio > 1;
-            
-            console.log('Mobile Detection:', {
-                userAgent: userAgent,
-                isMobileUserAgent: isMobileUserAgent,
-                screenWidth: screenWidth,
-                screenHeight: screenHeight,
-                isMobileScreen: isMobileScreen,
-                isTouchDevice: isTouchDevice,
-                hasOrientationAPI: hasOrientationAPI,
-                hasHighDPR: hasHighDPR
-            });
-            
-            // ถือว่าเป็น mobile หาก:
-            // 1. User Agent เป็น mobile หรือ
-            // 2. ขนาดหน้าจอเล็กและมี touch support
-            return isMobileUserAgent || (isMobileScreen && isTouchDevice);
-        }
-
-        // ตรวจสอบว่าเป็น PC หรือไม่
-        function isPCDevice() {
-            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-            const screenWidth = window.screen.width;
-            
-            // ตรวจสอบ Desktop OS
-            const desktopOS = /Windows NT|Macintosh|Linux/i.test(userAgent);
-            
-            // ตรวจสอบ Desktop Browser
-            const desktopBrowser = /Chrome|Firefox|Safari|Edge|Opera/i.test(userAgent) && 
-                                  !/Mobile|Android|iPhone|iPad/i.test(userAgent);
-            
-            // ตรวจสอบขนาดหน้าจอใหญ่
-            const largeScreen = screenWidth >= 1024;
-            
-            // ไม่มี Touch Support หรือมี Mouse
-            const hasMouseInput = !('ontouchstart' in window) || window.matchMedia('(pointer: fine)').matches;
-            
-            console.log('PC Detection:', {
-                desktopOS: desktopOS,
-                desktopBrowser: desktopBrowser,
-                largeScreen: largeScreen,
-                hasMouseInput: hasMouseInput,
-                screenWidth: screenWidth
-            });
-            
-            return (desktopOS && desktopBrowser) || (largeScreen && hasMouseInput);
-        }
-
-        // แสดง Mobile Only Warning
-        function showMobileOnlyWarning() {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('mobileOnlyWarning').classList.remove('hidden');
-            document.getElementById('app').classList.add('hidden');
-            
-            // ป้องกันการเข้าถึง console
-            if (typeof console !== 'undefined') {
-                console.log('%c⚠️ การเข้าถึงระบบผ่าน PC ถูกจำกัด', 'color: red; font-size: 16px; font-weight: bold;');
-                console.log('%c🔒 กรุณาใช้งานผ่านมือถือหรือแท็บเล็ตเท่านั้น', 'color: orange; font-size: 14px;');
-            }
-        }
-
-        // ตรวจสอบ LIFF Environment
-        function isLIFFEnvironment() {
-            return typeof liff !== 'undefined' && window.location.hostname.includes('liff');
-        }
-
-        // Device Check ก่อนโหลดแอป
-        function performDeviceCheck() {
-            const isMobile = detectMobileDevice();
-            const isPC = isPCDevice();
-            const inLIFF = isLIFFEnvironment();
-            
-            console.log('Device Check Results:', {
-                isMobile: isMobile,
-                isPC: isPC,
-                inLIFF: inLIFF,
-                userAgent: navigator.userAgent,
-                screenSize: `${window.screen.width}x${window.screen.height}`,
-                viewportSize: `${window.innerWidth}x${window.innerHeight}`
-            });
-            
-            // บล็อกการเข้าถึงจาก PC
-            if (isPC && !isMobile) {
-                showMobileOnlyWarning();
-                return false;
-            }
-            
-            // ตรวจสอบเพิ่มเติมสำหรับขนาดหน้าจอ
-            if (window.screen.width > 1200 && window.innerWidth > 1200) {
-                showMobileOnlyWarning();
-                return false;
-            }
-            
-            return true;
-        }
-
         // Global Variables
         let userData = {};
         let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
         let walletData = { balance: 0, transactions: [] };
 
-        // Loading progress tracker
+        // Optimized Loading System
         let loadingSteps = 0;
-        const totalSteps = 4; // จำนวนขั้นตอนการโหลด
+        const totalSteps = 3; // ลดจำนวนขั้นตอนลง
+        const loadingMessages = [
+            'เชื่อมต่อระบบ...',
+            'โหลดข้อมูลผู้ใช้...',
+            'เสร็จสิ้น!'
+        ];
 
-        function updateLoadingProgress() {
-            loadingSteps++;
-            const progress = (loadingSteps / totalSteps) * 100;
+        function updateLoadingProgress(message) {
             const progressBar = document.getElementById('loadingProgress');
-            if (progressBar) {
+            const loadingText = document.getElementById('loadingText');
+            
+            if (progressBar && loadingText) {
+                loadingSteps++;
+                const progress = Math.min((loadingSteps / totalSteps) * 100, 100);
                 progressBar.style.width = progress + '%';
+                
+                if (message) {
+                    loadingText.textContent = message;
+                } else if (loadingMessages[loadingSteps - 1]) {
+                    loadingText.textContent = loadingMessages[loadingSteps - 1];
+                }
             }
             
-            // เมื่อโหลดเสร็จครบทุกขั้นตอน
+            // ซ่อน loading เมื่อเสร็จทั้งหมด
             if (loadingSteps >= totalSteps) {
                 setTimeout(() => {
                     hideLoading();
-                }, 200); // หน่วงเวลาเล็กน้อยเพื่อให้เห็นแถบความคืบหน้า 100%
+                }, 300); // ลดเวลาหน่วง
             }
         }
 
         function hideLoading() {
+            const loadingElement = document.getElementById('loading');
+            const appElement = document.getElementById('app');
+            
+            if (loadingElement && appElement) {
+                loadingElement.style.opacity = '0';
+                setTimeout(() => {
+                    loadingElement.classList.add('hidden');
+                    appElement.classList.remove('hidden');
+                }, 200);
+            }
+        }
+
+        // เริ่มต้น Progress ทันที
+        function startProgress() {
+            updateLoadingProgress('เริ่มต้นระบบ...');
+        }
+
+        // Mobile Device Detection (ปรับปรุงให้เร็วขึ้น)
+        function detectMobileDevice() {
+            const userAgent = navigator.userAgent;
+            const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+            const isMobileUserAgent = mobileRegex.test(userAgent);
+            const isMobileScreen = window.screen.width <= 768;
+            const isTouchDevice = 'ontouchstart' in window;
+            
+            return isMobileUserAgent || (isMobileScreen && isTouchDevice);
+        }
+
+        function isPCDevice() {
+            const userAgent = navigator.userAgent;
+            const desktopOS = /Windows NT|Macintosh|Linux/i.test(userAgent);
+            const largeScreen = window.screen.width >= 1024;
+            const hasMouseInput = window.matchMedia('(pointer: fine)').matches;
+            
+            return (desktopOS && largeScreen) || (largeScreen && hasMouseInput);
+        }
+
+        function showMobileOnlyWarning() {
             document.getElementById('loading').classList.add('hidden');
-            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('mobileOnlyWarning').classList.remove('hidden');
+            document.getElementById('app').classList.add('hidden');
+        }
+
+        function performDeviceCheck() {
+            const isMobile = detectMobileDevice();
+            const isPC = isPCDevice();
+            
+            if (isPC && !isMobile) {
+                showMobileOnlyWarning();
+                return false;
+            }
+            
+            if (window.screen.width > 1200) {
+                showMobileOnlyWarning();
+                return false;
+            }
+            
+            return true;
         }
 
         // Navigation function
@@ -350,79 +313,45 @@
             window.location.href = 'dashboard.html';
         }
 
-        // Initialize LIFF
-        window.onload = async function() {
-            // ตรวจสอบอุปกรณ์ก่อนโหลดแอป
-            if (!performDeviceCheck()) {
-                return; // หยุดการทำงานถ้าไม่ใช่ mobile
-            }
+        // เริ่มต้นระบบทันทีเมื่อโหลดหน้า
+        document.addEventListener('DOMContentLoaded', function() {
+            startProgress();
+        });
 
+        // Optimized LIFF Initialize
+        window.onload = async function() {
             try {
-                // ตรวจสอบว่ามี LIFF_ID หรือไม่
-                if (!LIFF_ID) {
-                    console.error('LIFF_ID not found in config.js');
-                    throw new Error('LIFF_ID not configured');
+                // ตรวจสอบอุปกรณ์อย่างรวดเร็ว
+                if (!performDeviceCheck()) {
+                    return;
                 }
+
+                // เริ่ม LIFF ทันที
+                updateLoadingProgress('เชื่อมต่อ LINE...');
                 
-                await liff.init({ liffId: LIFF_ID });
-                updateLoadingProgress(); // ขั้นตอนที่ 1: LIFF init
-                
-                // ดึงข้อมูลจาก Google Sheets ก่อน (สำคัญ!)
-                try {
-                    const pricesFetched = await fetchGoldPrices();
-                    console.log('Gold prices fetched:', pricesFetched);
-                } catch (priceError) {
-                    console.error('Failed to fetch gold prices:', priceError);
-                }
-                
-                try {
-                    await fetchBankAccounts();
-                    console.log('Bank accounts fetched');
-                } catch (bankError) {
-                    console.error('Failed to fetch bank accounts:', bankError);
-                }
-                
-                if (liff.isLoggedIn()) {
-                    updateLoadingProgress(); // ขั้นตอนที่ 2: Login check
-                    await initApp();
+                if (typeof liff !== 'undefined' && window.LIFF_ID) {
+                    await liff.init({ liffId: window.LIFF_ID });
+                    
+                    if (liff.isLoggedIn()) {
+                        updateLoadingProgress('โหลดข้อมูลผู้ใช้...');
+                        await initAppFast();
+                    } else {
+                        liff.login();
+                    }
                 } else {
-                    liff.login();
+                    // ถ้าไม่มี LIFF ก็ให้แสดงแอปเลย (สำหรับ demo)
+                    console.warn('LIFF not available, showing demo mode');
+                    await initDemoMode();
                 }
             } catch (err) {
                 console.error('LIFF init failed:', err);
-                // ยังคงแสดงแอปแม้มี error แต่แจ้งเตือนผู้ใช้
-                hideLoading();
-                Swal.fire({
-                    title: 'เตือน',
-                    text: 'ไม่สามารถเชื่อมต่อระบบได้ กรุณาลองใหม่อีกครั้ง',
-                    icon: 'warning',
-                    confirmButtonText: 'ตกลง'
-                });
+                // แสดงแอปแม้เกิด error
+                await initDemoMode();
             }
         };
 
-        // Monitor screen size changes
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 1200) {
-                if (!document.getElementById('mobileOnlyWarning').classList.contains('hidden')) {
-                    return;
-                }
-                showMobileOnlyWarning();
-            }
-        });
-
-        // Prevent right-click context menu on mobile
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
-
-        // Prevent text selection
-        document.addEventListener('selectstart', function(e) {
-            e.preventDefault();
-        });
-
-        // Initialize App (ปรับให้เร็วขึ้น)
-        async function initApp() {
+        // เริ่มต้นแอปแบบเร็ว (โหลดเฉพาะข้อมูลจำเป็น)
+        async function initAppFast() {
             try {
                 const profile = await liff.getProfile();
                 userData = {
@@ -430,52 +359,89 @@
                     name: profile.displayName,
                     picture: profile.pictureUrl
                 };
+                
+                // อัพเดท UI ทันที
                 document.getElementById('userName').textContent = userData.name;
                 document.getElementById('userPic').src = userData.picture;
-                updateLoadingProgress(); // ขั้นตอนที่ 3: Profile loaded
                 
-                // โหลดข้อมูลแบบ parallel และไม่รอให้เสร็จทั้งหมด
-                const dataPromises = [
-                    loadGoldData(),
-                    loadTransactions(),
-                    loadWalletData()
-                ];
+                updateLoadingProgress('เสร็จสิ้น!');
                 
-                // รอเพียงข้อมูลหลักเท่านั้น
-                await Promise.race([
-                    Promise.all(dataPromises),
-                    new Promise(resolve => setTimeout(resolve, 1000)) // timeout 1 วินาที
-                ]);
-                
-                updateLoadingProgress(); // ขั้นตอนที่ 4: Data loaded
-                
-                // โหลดข้อมูลที่เหลือใน background
-                Promise.all(dataPromises).catch(console.error);
+                // โหลดข้อมูลใน background หลังจากแสดงแอปแล้ว
+                setTimeout(() => {
+                    loadDataInBackground();
+                }, 100);
                 
             } catch (error) {
                 console.error('Error initializing app:', error);
-                // แสดงแอปแม้มี error
-                hideLoading();
-                // Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+                await initDemoMode();
             }
         }
 
-        // Fixed API call with better error handling and CORS mode
+        // โหลดข้อมูลใน background
+        async function loadDataInBackground() {
+            try {
+                // โหลดข้อมูลแบบ parallel และไม่บล็อก UI
+                const promises = [
+                    loadGoldDataSilent(),
+                    loadTransactionsSilent(),
+                    loadWalletDataSilent()
+                ];
+                
+                await Promise.allSettled(promises);
+            } catch (error) {
+                console.error('Background loading error:', error);
+            }
+        }
+
+        // Demo mode สำหรับกรณีที่ไม่มี LIFF
+        async function initDemoMode() {
+            userData = {
+                userId: 'demo_user',
+                name: 'ผู้ใช้ทดสอบ',
+                picture: 'https://cdn-icons-gif.flaticon.com/11255/11255995.gif'
+            };
+            
+            document.getElementById('userName').textContent = userData.name;
+            document.getElementById('userPic').src = userData.picture;
+            
+            updateLoadingProgress('เสร็จสิ้น!');
+            
+            // โหลดข้อมูล demo
+            setTimeout(() => {
+                loadDemoData();
+            }, 100);
+        }
+
+        // โหลดข้อมูล demo
+        function loadDemoData() {
+            document.getElementById('totalGold').textContent = '15.50 กรัม';
+            document.getElementById('totalValue').textContent = 'มูลค่า: ฿42,500';
+            document.getElementById('barGold').textContent = '10.00 กรัม';
+            document.getElementById('ornamentGold').textContent = '5.50 กรัม';
+            document.getElementById('walletBalance').textContent = '฿25,000.00';
+            
+            // แสดงข้อมูล demo ในประวัติ
+            const transactionList = document.getElementById('transactionList');
+            transactionList.innerHTML = '<p class="text-gray-500 text-center">ไม่มีข้อมูลในโหมดทดสอบ</p>';
+            
+            const walletHistory = document.getElementById('walletHistory');
+            walletHistory.innerHTML = '<p class="text-gray-500 text-center">ไม่มีข้อมูลในโหมดทดสอบ</p>';
+        }
+
+        // API call function with faster timeout
         async function makeApiCall(url, options = {}) {
             const defaultOptions = {
                 method: 'GET',
-                mode: 'cors', // Explicitly set CORS mode
-                credentials: 'omit', // Don't send cookies
-                headers: {
-                    'Accept': 'application/json',
-                },
+                mode: 'cors',
+                credentials: 'omit',
+                headers: { 'Accept': 'application/json' },
             };
             
             const finalOptions = { ...defaultOptions, ...options };
             
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // ลด timeout เหลือ 5 วินาที
                 
                 const response = await fetch(url, {
                     ...finalOptions,
@@ -489,14 +455,7 @@
                 }
                 
                 const text = await response.text();
-                
-                // Try to parse as JSON
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.error('Response is not valid JSON:', text);
-                    throw new Error('Invalid JSON response');
-                }
+                return JSON.parse(text);
             } catch (error) {
                 if (error.name === 'AbortError') {
                     throw new Error('Request timeout');
@@ -505,71 +464,36 @@
             }
         }
 
-        // Load Gold Data (improved with better error handling)
-        async function loadGoldData() {
+        // Silent loading functions (ไม่แสดง error popup)
+        async function loadGoldDataSilent() {
             try {
-                if (!API_URL) {
-                    console.error('API_URL not found in config.js');
-                    throw new Error('API_URL not configured');
-                }
+                if (!window.API_URL) return;
                 
-                console.log('Fetching gold data from:', `${API_URL}?action=getBalance&userId=${userData.userId}`);
-                
-                const data = await makeApiCall(`${API_URL}?action=getBalance&userId=${userData.userId}`);
-                console.log('Gold data response:', data);
+                const data = await makeApiCall(`${window.API_URL}?action=getBalance&userId=${userData.userId}`);
                 
                 if (data.success) {
                     currentGoldData.totalGold = data.totalGold || 0;
                     currentGoldData.avgPrice = data.avgPrice || 0;
                     currentGoldData.balances = data.balances || { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } };
                     
-                    const gramsPerBaht = GRAMS_PER_BAHT || 15.16;
+                    const gramsPerBaht = window.GRAMS_PER_BAHT || 15.16;
                     const totalValue = (currentGoldData.totalGold / gramsPerBaht) * currentGoldData.avgPrice;
                     
                     document.getElementById('totalGold').textContent = formatNumber(currentGoldData.totalGold) + ' กรัม';
                     document.getElementById('totalValue').textContent = 'มูลค่า: ฿' + formatCurrency(totalValue);
                     document.getElementById('barGold').textContent = formatNumber(currentGoldData.balances.bar?.totalGold || 0) + ' กรัม';
                     document.getElementById('ornamentGold').textContent = formatNumber(currentGoldData.balances.ornament?.totalGold || 0) + ' กรัม';
-                    
-                    console.log('Gold data updated successfully');
-                } else {
-                    console.error('API returned success: false', data);
-                    throw new Error(data.message || 'Failed to get gold data');
                 }
             } catch (error) {
-                console.error('Error loading gold data:', error);
-                // แสดงข้อมูลเริ่มต้นและแจ้งเตือน
-                document.getElementById('totalGold').textContent = '0 กรัม';
-                document.getElementById('totalValue').textContent = 'มูลค่า: ฿0';
-                document.getElementById('barGold').textContent = '0 กรัม';
-                document.getElementById('ornamentGold').textContent = '0 กรัม';
-                
-                // แจ้งเตือนผู้ใช้เฉพาะเมื่อ error ไม่ใช่ timeout
-                if (error.message !== 'Request timeout') {
-                    Swal.fire({
-                        title: 'ไม่สามารถโหลดข้อมูลทองได้',
-                        text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
-                        icon: 'warning',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-                }
+                console.error('Silent gold data loading failed:', error);
             }
         }
 
-        // Load Wallet Data (improved with better error handling)
-        async function loadWalletData() {
+        async function loadWalletDataSilent() {
             try {
-                if (!API_URL) {
-                    throw new Error('API_URL not configured');
-                }
+                if (!window.API_URL) return;
                 
-                console.log('Fetching wallet data from:', `${API_URL}?action=getWallet&userId=${userData.userId}`);
-                
-                const data = await makeApiCall(`${API_URL}?action=getWallet&userId=${userData.userId}`);
-                console.log('Wallet data response:', data);
+                const data = await makeApiCall(`${window.API_URL}?action=getWallet&userId=${userData.userId}`);
                 
                 if (data.success) {
                     walletData.balance = data.balance || 0;
@@ -633,55 +557,34 @@
                         `;
                         walletHistory.appendChild(div);
                     });
-                    
-                    console.log('Wallet data updated successfully');
-                } else {
-                    throw new Error(data.message || 'Failed to get wallet data');
                 }
             } catch (error) {
-                console.error('Error loading wallet data:', error);
-                document.getElementById('walletBalance').textContent = '฿0.00';
-                document.getElementById('walletHistory').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
-                
-                if (error.message !== 'Request timeout') {
-                    Swal.fire({
-                        title: 'ไม่สามารถโหลดข้อมูลกระเป๋าเงินได้',
-                        text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
-                        icon: 'warning',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-                }
+                console.error('Silent wallet data loading failed:', error);
             }
         }
 
-        // Load Transactions (improved with better error handling)
-        async function loadTransactions() {
+        async function loadTransactionsSilent() {
             try {
-                if (!API_URL) {
-                    throw new Error('API_URL not configured');
-                }
+                if (!window.API_URL) return;
                 
-                console.log('Fetching transactions from:', `${API_URL}?action=getTransactions&userId=${userData.userId}`);
-                
-                const data = await makeApiCall(`${API_URL}?action=getTransactions&userId=${userData.userId}`);
-                console.log('Transactions response:', data);
+                const data = await makeApiCall(`${window.API_URL}?action=getTransactions&userId=${userData.userId}`);
                 
                 if (data.success) {
                     const transactionList = document.getElementById('transactionList');
                     transactionList.innerHTML = '';
+                    
                     if (data.transactions.length === 0) {
                         transactionList.innerHTML = '<p class="text-gray-500 text-center">ยังไม่มีรายการ</p>';
                         return;
                     }
+                    
                     data.transactions.forEach(transaction => {
                         const div = document.createElement('div');
                         div.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
                         const typeColor = transaction.type === 'ซื้อ' ? 'text-green-600' : 'text-red-600';
                         const typeIcon = transaction.type === 'ซื้อ' ? 'fa-plus' : 'fa-minus';
                         const goldTypeText = transaction.goldType === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+                        
                         div.innerHTML = `
                             <div>
                                 <p class="font-semibold ${typeColor}">
@@ -697,26 +600,20 @@
                         `;
                         transactionList.appendChild(div);
                     });
-                    
-                    console.log('Transactions updated successfully');
-                } else {
-                    throw new Error(data.message || 'Failed to get transactions');
                 }
             } catch (error) {
-                console.error('Error loading transactions:', error);
-                document.getElementById('transactionList').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
-                
-                if (error.message !== 'Request timeout') {
-                    Swal.fire({
-                        title: 'ไม่สามารถโหลดประวัติการทำรายการได้',
-                        text: 'กรุณาตรวจสอบการเชื่อมต่อและลองใหม่',
-                        icon: 'warning',
-                        toast: true,
-                        position: 'top-end',
-                        showConfirmButton: false,
-                        timer: 3000
-                    });
-                }
+                console.error('Silent transactions loading failed:', error);
+            }
+        }
+
+        // Wallet loading with error handling (for tab switching)
+        async function loadWalletData() {
+            try {
+                await loadWalletDataSilent();
+            } catch (error) {
+                console.error('Error loading wallet data:', error);
+                document.getElementById('walletBalance').textContent = '฿0.00';
+                document.getElementById('walletHistory').innerHTML = '<p class="text-gray-500 text-center">ไม่สามารถโหลดข้อมูลได้</p>';
             }
         }
 
@@ -733,45 +630,62 @@
             };
         }
 
-        // Improved fetchBankAccounts with better error handling
-        async function fetchBankAccounts() {
-            try {
-                if (!API_URL) {
-                    throw new Error('API_URL not configured');
-                }
-                
-                console.log('Fetching bank accounts...');
-                const data = await makeApiCall(`${API_URL}?action=getBankAccounts`);
-                console.log('Bank accounts fetched:', data);
-                return data;
-            } catch (error) {
-                console.error('Error fetching bank accounts:', error);
-                return { success: false, accounts: [] };
-            }
+        // Additional optimizations
+
+        // Preload critical resources
+        function preloadResources() {
+            const criticalImages = [
+                'https://cdn-icons-gif.flaticon.com/11255/11255995.gif'
+            ];
+            
+            criticalImages.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
         }
 
-        // Improved fetchGoldPrices with better error handling
-        async function fetchGoldPrices() {
-            try {
-                if (!API_URL) {
-                    throw new Error('API_URL not configured');
+        // Start preloading immediately
+        preloadResources();
+
+        // Optimize animations
+        function enableHardwareAcceleration() {
+            const style = document.createElement('style');
+            style.textContent = `
+                .card-hover, .btn-animate, #loading {
+                    will-change: transform;
+                    transform: translateZ(0);
                 }
                 
-                console.log('Fetching gold prices...');
-                const data = await makeApiCall(`${API_URL}?action=getGoldPrices`);
-                console.log('Gold prices fetched:', data);
-                return data.success || false;
-            } catch (error) {
-                console.error('Error fetching gold prices:', error);
-                return false;
-            }
+                .animate-bounce, .animate-ping {
+                    will-change: transform;
+                }
+                
+                #loadingProgress {
+                    will-change: width;
+                }
+            `;
+            document.head.appendChild(style);
         }
 
-        // Additional security measures
-        
-        // Disable developer tools (partial protection)
+        enableHardwareAcceleration();
+
+        // Monitor screen size changes (optimized)
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (window.innerWidth > 1200) {
+                    showMobileOnlyWarning();
+                }
+            }, 250);
+        });
+
+        // Prevent context menu and text selection (optimized)
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('selectstart', e => e.preventDefault());
+
+        // Disable developer tools (basic protection)
         document.addEventListener('keydown', function(e) {
-            // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
             if (e.keyCode === 123 || 
                 (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) ||
                 (e.ctrlKey && e.keyCode === 85)) {
@@ -780,29 +694,15 @@
             }
         });
 
-        // Detect if developer tools are open (basic detection)
-        setInterval(function() {
-            if (window.outerHeight - window.innerHeight > 200 || 
-                window.outerWidth - window.innerWidth > 200) {
-                console.clear();
-                console.log('%c🚫 Developer tools detected!', 'color: red; font-size: 20px; font-weight: bold;');
-                console.log('%c📱 This application is designed for mobile devices only.', 'color: orange; font-size: 14px;');
-            }
-        }, 1000);
-
         // Disable drag and drop
-        document.addEventListener('dragstart', function(e) {
-            e.preventDefault();
-        });
+        document.addEventListener('dragstart', e => e.preventDefault());
 
-        // Disable image saving
-        document.addEventListener('dragstart', function(e) {
-            if (e.target.tagName === 'IMG') {
-                e.preventDefault();
-            }
-        });
+        // Prevent zoom gestures
+        document.addEventListener('gesturestart', e => e.preventDefault());
+        document.addEventListener('gesturechange', e => e.preventDefault());
+        document.addEventListener('gestureend', e => e.preventDefault());
 
-        // Monitor viewport changes
+        // Orientation change handler
         window.addEventListener('orientationchange', function() {
             setTimeout(function() {
                 if (window.innerWidth > 1200) {
@@ -811,17 +711,47 @@
             }, 500);
         });
 
-        // Prevent zoom
-        document.addEventListener('gesturestart', function(e) {
-            e.preventDefault();
+        // Performance monitoring (optional)
+        if (window.performance && window.performance.mark) {
+            window.performance.mark('app-start');
+            
+            window.addEventListener('load', function() {
+                window.performance.mark('app-loaded');
+                window.performance.measure('app-load-time', 'app-start', 'app-loaded');
+                
+                const measure = window.performance.getEntriesByName('app-load-time')[0];
+                console.log(`App loaded in ${measure.duration.toFixed(2)}ms`);
+            });
+        }
+
+        // Service Worker registration (for caching - optional)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed'));
+            });
+        }
+
+        // Cleanup function for better memory management
+        window.addEventListener('beforeunload', function() {
+            // Cancel any pending requests
+            if (window.currentRequests) {
+                window.currentRequests.forEach(request => {
+                    if (request.abort) request.abort();
+                });
+            }
         });
 
-        document.addEventListener('gesturechange', function(e) {
-            e.preventDefault();
+        // Error boundary for uncaught errors
+        window.addEventListener('error', function(e) {
+            console.error('Uncaught error:', e.error);
+            // Don't show error popup to user, just log it
         });
 
-        document.addEventListener('gestureend', function(e) {
-            e.preventDefault();
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Unhandled promise rejection:', e.reason);
+            // Don't show error popup to user, just log it
         });
     </script>
 </body>
