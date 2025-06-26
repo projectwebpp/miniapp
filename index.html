@@ -848,7 +848,7 @@
             e.preventDefault();
         });
 
-        // Add CSS for smooth transitions
+        // Add CSS for smooth transitions and tab styles
         const style = document.createElement('style');
         style.textContent = `
             #loading {
@@ -866,6 +866,43 @@
             .card-hover, .btn-animate {
                 will-change: transform;
                 transform: translateZ(0);
+            }
+            
+            /* Tab Styles */
+            .tabs {
+                background: white;
+                border-top: 1px solid #e5e7eb;
+            }
+            
+            .tab {
+                color: #6b7280;
+                transition: all 0.2s ease;
+                border-bottom: 3px solid transparent;
+            }
+            
+            .tab:hover {
+                color: #374151;
+                background-color: #f9fafb;
+            }
+            
+            .tab-active {
+                color: #f59e0b !important;
+                border-bottom-color: #f59e0b !important;
+                background-color: #fffbeb;
+            }
+            
+            .btn-animate:active {
+                transform: scale(0.95);
+            }
+            
+            .card-hover:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            }
+            
+            /* Page container styles */
+            .page-container {
+                padding-bottom: 80px; /* Space for fixed tabs */
             }
         `;
         document.head.appendChild(style);
