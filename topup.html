@@ -435,10 +435,23 @@
                 // Show app almost immediately
                 setTimeout(hideLoading, 20);
 
-                // Check configuration
-                if (!window.LIFF_ID || window.LIFF_ID === 'YOUR_LIFF_ID') {
-                    // Don't block loading for config issues
-                    console.warn('LIFF_ID not configured');
+                // Check if LIFF is available before checking LIFF_ID
+                if (typeof liff === 'undefined') {
+                    console.error('LIFF SDK not loaded');
+                    setTimeout(() => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ข้อผิดพลาด',
+                            text: 'ไม่สามารถโหลด LIFF SDK ได้',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    }, 100);
+                    return;
+                }
+
+                // Check LIFF_ID configuration
+                if (typeof LIFF_ID === 'undefined' || !LIFF_ID || LIFF_ID === 'YOUR_LIFF_ID' || LIFF_ID.trim() === '') {
+                    console.warn('LIFF_ID not properly configured:', LIFF_ID);
                     setTimeout(() => {
                         Swal.fire({
                             icon: 'warning',
@@ -450,12 +463,12 @@
                     return;
                 }
 
-                if (typeof liff === 'undefined') {
-                    throw new Error('LIFF SDK not loaded');
-                }
+                console.log('LIFF_ID found:', LIFF_ID);
 
                 // Start LIFF init in background
                 liff.init({ liffId: LIFF_ID }).then(() => {
+                    console.log('LIFF initialized successfully');
+                    
                     // Try to fetch bank accounts in background
                     if (window.fetchBankAccounts) {
                         fetchBankAccounts().catch(err => {
@@ -464,21 +477,33 @@
                     }
                     
                     if (liff.isLoggedIn()) {
+                        console.log('User is logged in');
                         initApp();
                     } else {
+                        console.log('User not logged in, redirecting to login...');
                         liff.login();
                     }
                 }).catch(err => {
                     console.error('LIFF init failed:', err);
                     setTimeout(() => {
-                        Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับ LINE ได้: ' + err.message, 'error');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ข้อผิดพลาด',
+                            text: 'ไม่สามารถเชื่อมต่อกับ LINE ได้: ' + err.message,
+                            confirmButtonColor: '#ef4444'
+                        });
                     }, 100);
                 });
 
             } catch (err) {
                 console.error('Initialization failed:', err);
                 setTimeout(() => {
-                    Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเริ่มต้น: ' + err.message, 'error');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ข้อผิดพลาด',
+                        text: 'เกิดข้อผิดพลาดในการเริ่มต้น: ' + err.message,
+                        confirmButtonColor: '#ef4444'
+                    });
                 }, 100);
             }
         };
