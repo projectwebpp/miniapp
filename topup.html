@@ -185,30 +185,34 @@
                 // Clear existing options
                 bankSelect.innerHTML = '<option value="">-- เลือกธนาคาร --</option>';
                 
-                // Add default banks with account names if BANK_ACCOUNTS not available
-                const defaultBanks = {
-                    'ธนาคารกรุงเทพ': { 
-                        account: '1234567890',
-                        name: 'บริษัท ระบบออมทอง จำกัด'
-                    },
-                    'ธนาคารกสิกรไทย': { 
-                        account: '0987654321',
-                        name: 'บริษัท ระบบออมทอง จำกัด'
-                    },
-                    'ธนาคารไทยพาณิชย์': { 
-                        account: '1122334455',
-                        name: 'บริษัท ระบบออมทอง จำกัด'
+                // Check if BANK_ACCOUNTS is available from Sheet
+                if (window.BANK_ACCOUNTS && Object.keys(window.BANK_ACCOUNTS).length > 0) {
+                    console.log('Using BANK_ACCOUNTS from Sheet:', window.BANK_ACCOUNTS);
+                    
+                    // Add options from Sheet data
+                    for (const [bankName, bankData] of Object.entries(window.BANK_ACCOUNTS)) {
+                        const option = document.createElement('option');
+                        option.value = bankName;
+                        option.textContent = bankName;
+                        bankSelect.appendChild(option);
                     }
-                };
-                
-                const banksToUse = window.BANK_ACCOUNTS || defaultBanks;
-                
-                // Add new options based on BANK_ACCOUNTS
-                for (const [bankName, bankData] of Object.entries(banksToUse)) {
-                    const option = document.createElement('option');
-                    option.value = bankName;
-                    option.textContent = bankName;
-                    bankSelect.appendChild(option);
+                } else {
+                    console.warn('BANK_ACCOUNTS not available from Sheet, using fallback data');
+                    
+                    // Fallback data only if Sheet data is not available
+                    const fallbackBanks = {
+                        'ไม่มีข้อมูลธนาคาร': { 
+                            account: 'กรุณาตั้งค่า Sheet',
+                            name: 'กรุณาตั้งค่าข้อมูลธนาคาร'
+                        }
+                    };
+                    
+                    for (const [bankName, bankData] of Object.entries(fallbackBanks)) {
+                        const option = document.createElement('option');
+                        option.value = bankName;
+                        option.textContent = bankName;
+                        bankSelect.appendChild(option);
+                    }
                 }
             }
         }
@@ -222,36 +226,29 @@
             if (bankSelect && accountNumberField && accountNameField) {
                 const selectedBank = bankSelect.value;
                 
-                const defaultBanks = {
-                    'ธนาคารกรุงเทพ': { 
-                        account: '1234567890',
-                        name: 'บริษัท ระบบออมทอง จำกัด'
-                    },
-                    'ธนาคารกสิกรไทย': { 
-                        account: '0987654321',
-                        name: 'บริษัท ระบบออมทอง จำกัด'
-                    },
-                    'ธนาคารไทยพาณิชย์': { 
-                        account: '1122334455',
-                        name: 'บริษัท ระบบออมทอง จำกัด'
-                    }
-                };
-                
-                const banksToUse = window.BANK_ACCOUNTS || defaultBanks;
-                const bankData = banksToUse[selectedBank];
-                
-                if (bankData) {
-                    // Handle both old format (string) and new format (object)
+                // Use BANK_ACCOUNTS from Sheet if available
+                if (window.BANK_ACCOUNTS && window.BANK_ACCOUNTS[selectedBank]) {
+                    const bankData = window.BANK_ACCOUNTS[selectedBank];
+                    console.log('Selected bank data:', bankData);
+                    
                     if (typeof bankData === 'string') {
+                        // Old format: just account number as string
                         accountNumberField.value = bankData;
-                        accountNameField.value = 'บริษัท ระบบออมทอง จำกัด'; // Default name
-                    } else {
-                        accountNumberField.value = bankData.account || '';
-                        accountNameField.value = bankData.name || 'บริษัท ระบบออมทอง จำกัด';
+                        accountNameField.value = 'กรุณาอัพเดทข้อมูลในฐานข้อมูล';
+                    } else if (typeof bankData === 'object') {
+                        // New format: object with account and name
+                        accountNumberField.value = bankData.account || bankData.accountNumber || '';
+                        accountNameField.value = bankData.name || bankData.accountName || '';
                     }
                 } else {
+                    // No data available
                     accountNumberField.value = '';
                     accountNameField.value = '';
+                    
+                    if (selectedBank) {
+                        accountNumberField.placeholder = 'ไม่พบข้อมูลธนาคาร';
+                        accountNameField.placeholder = 'กรุณาตั้งค่าข้อมูลในระบบ';
+                    }
                 }
                 
                 updateProcessSteps(selectedBank ? 2 : 1);
@@ -518,11 +515,19 @@
                 liff.init({ liffId: LIFF_ID }).then(() => {
                     console.log('LIFF initialized successfully');
                     
-                    // Try to fetch bank accounts in background
+                    // Try to fetch bank accounts from Sheet FIRST
                     if (window.fetchBankAccounts) {
-                        fetchBankAccounts().catch(err => {
-                            console.warn('Failed to fetch bank accounts:', err);
+                        console.log('Fetching bank accounts from Sheet...');
+                        fetchBankAccounts().then(() => {
+                            console.log('Bank accounts fetched successfully');
+                            updateBankDropdowns(); // Update dropdown after data is loaded
+                        }).catch(err => {
+                            console.error('Failed to fetch bank accounts from Sheet:', err);
+                            updateBankDropdowns(); // Still update with fallback
                         });
+                    } else {
+                        console.warn('fetchBankAccounts function not available');
+                        updateBankDropdowns(); // Update with fallback
                     }
                     
                     if (liff.isLoggedIn()) {
