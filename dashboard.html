@@ -23,11 +23,11 @@
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
 
-    <!-- Loading Screen -->
+    <!-- Ultra Fast Loading Screen -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
-            <i class="fas fa-chart-line text-6xl text-yellow-500 animate-pulse mb-4"></i>
-            <p class="text-gray-600">กำลังโหลดราคาทอง...</p>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-2"></div>
+            <p class="text-gray-600 text-xs">กำลังโหลด...</p>
         </div>
     </div>
 
@@ -127,12 +127,18 @@
         let goldPriceChart = null;
         let chartPeriod = '1D';
 
+        // Fast loading management
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
         // Go back function
         function goBack() {
             window.history.back();
         }
 
-        // Initialize Chart
+        // Initialize Chart with optimized performance
         function initChart() {
             const ctx = document.getElementById('goldPriceChart').getContext('2d');
 
@@ -149,7 +155,8 @@
                     case '3M': points = 90; break;
                 }
 
-                const basePrice = currentGoldPrices.bar.buyPrice || 30000;
+                const basePrice = (window.currentGoldPrices && window.currentGoldPrices.bar && window.currentGoldPrices.bar.buyPrice) 
+                    ? window.currentGoldPrices.bar.buyPrice : 30000;
 
                 for (let i = points; i >= 0; i--) {
                     const date = new Date(now);
@@ -286,19 +293,38 @@
             initChart();
         }
 
-        // Update Dashboard
+        // Update Dashboard with safe price access
         function updateDashboard() {
+            // Check if currentGoldPrices is available
+            if (!window.currentGoldPrices || !window.currentGoldPrices.bar || !window.currentGoldPrices.ornament) {
+                console.warn('Gold prices not available yet, using default values');
+                // Set default values
+                document.getElementById('barBuyPrice').textContent = '฿0';
+                document.getElementById('barSellPrice').textContent = '฿0';
+                document.getElementById('ornamentBuyPrice').textContent = '฿0';
+                document.getElementById('ornamentSellPrice').textContent = '฿0';
+                
+                // Set default statistics
+                document.getElementById('todayHigh').textContent = '฿0';
+                document.getElementById('todayLow').textContent = '฿0';
+                document.getElementById('avg7Days').textContent = '฿0';
+                document.getElementById('change30Days').textContent = '0%';
+                
+                document.getElementById('lastUpdated').textContent = 'กำลังโหลด...';
+                return;
+            }
+
             // Update current prices
-            document.getElementById('barBuyPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.buyPrice);
-            document.getElementById('barSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.sellPrice);
-            document.getElementById('ornamentBuyPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.buyPrice);
-            document.getElementById('ornamentSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.sellPrice);
+            document.getElementById('barBuyPrice').textContent = '฿' + formatCurrency(window.currentGoldPrices.bar.buyPrice);
+            document.getElementById('barSellPrice').textContent = '฿' + formatCurrency(window.currentGoldPrices.bar.sellPrice);
+            document.getElementById('ornamentBuyPrice').textContent = '฿' + formatCurrency(window.currentGoldPrices.ornament.buyPrice);
+            document.getElementById('ornamentSellPrice').textContent = '฿' + formatCurrency(window.currentGoldPrices.ornament.sellPrice);
 
             // Calculate mock statistics (in real app, these would come from historical data)
             const mockStats = {
-                todayHigh: currentGoldPrices.bar.buyPrice * 1.01,
-                todayLow: currentGoldPrices.bar.buyPrice * 0.99,
-                avg7Days: currentGoldPrices.bar.buyPrice * 0.995,
+                todayHigh: window.currentGoldPrices.bar.buyPrice * 1.01,
+                todayLow: window.currentGoldPrices.bar.buyPrice * 0.99,
+                avg7Days: window.currentGoldPrices.bar.buyPrice * 0.995,
                 change30Days: 2.5
             };
 
@@ -339,7 +365,7 @@
                     throw new Error('Failed to fetch prices');
                 }
             } catch (error) {
-                //console.error('Error refreshing prices:', error);
+                console.error('Error refreshing prices:', error);
                 refreshBtn.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>เกิดข้อผิดพลาด';
                 setTimeout(() => {
                     refreshBtn.innerHTML = originalText;
@@ -348,34 +374,79 @@
             }
         }
 
-        // Initialize LIFF
+        // Initialize LIFF with ultra fast loading
         window.onload = async function() {
             try {
-                await liff.init({ liffId: LIFF_ID });
-                if (liff.isLoggedIn()) {
-                    const pricesFetched = await fetchGoldPrices();
-                    //console.log('Initial price fetch successful:', pricesFetched);
-                    initApp();
-                } else {
-                    liff.login();
+                // Show app immediately
+                setTimeout(hideLoading, 20);
+
+                // Check LIFF_ID configuration
+                if (typeof LIFF_ID === 'undefined' || !LIFF_ID || LIFF_ID === 'YOUR_LIFF_ID' || LIFF_ID.trim() === '') {
+                    console.warn('LIFF_ID not properly configured:', LIFF_ID);
+                    setTimeout(() => {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'ข้อผิดพลาดการตั้งค่า',
+                            text: 'กรุณาตั้งค่า LIFF_ID ใน config.js',
+                            confirmButtonColor: '#f59e0b'
+                        });
+                    }, 100);
+                    return;
                 }
+
+                // Initialize app with default data first
+                initApp();
+
+                // Initialize LIFF in background
+                liff.init({ liffId: LIFF_ID }).then(() => {
+                    if (liff.isLoggedIn()) {
+                        // Fetch prices in background and update
+                        fetchGoldPrices().then(success => {
+                            console.log('Price fetch completed:', success);
+                            if (success) {
+                                updateDashboard();
+                                initChart();
+                            }
+                        }).catch(err => {
+                            console.warn('Price fetch failed:', err);
+                        });
+                    } else {
+                        liff.login();
+                    }
+                }).catch(err => {
+                    console.error('LIFF init failed:', err);
+                    setTimeout(() => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ข้อผิดพลาด',
+                            text: 'ไม่สามารถเชื่อมต่อกับ LINE ได้: ' + err.message,
+                            confirmButtonColor: '#ef4444'
+                        });
+                    }, 100);
+                });
+
             } catch (err) {
-                //console.error('LIFF init failed:', err);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้น LIFF ได้', 'error');
+                console.error('Initialization failed:', err);
+                setTimeout(() => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ข้อผิดพลาด',
+                        text: 'เกิดข้อผิดพลาดในการเริ่มต้น: ' + err.message,
+                        confirmButtonColor: '#ef4444'
+                    });
+                }, 100);
             }
         };
 
-        // Initialize App
+        // Initialize App with ultra fast execution
         async function initApp() {
             try {
-                updateDashboard();
-                initChart();
+                // Initialize UI immediately with default values
+                updateDashboard(); // This will show default values if prices not available
+                initChart(); // This will use default base price if needed
                 
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
             } catch (error) {
-                //console.error('Error initializing app:', error);
-                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
+                console.error('Error initializing app:', error);
             }
         }
     </script>
