@@ -100,6 +100,16 @@
                         <p class="text-xs text-gray-500 mt-1">คลิกที่ไอคอนเพื่อคัดลอกเลขบัญชี</p>
                     </div>
 
+                    <!-- Account Name -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">
+                            <i class="fas fa-user mr-1"></i>ชื่อบัญชี
+                        </label>
+                        <input type="text" id="topupAccountName" placeholder="ชื่อบัญชีจะแสดงอัตโนมัติ"
+                               class="w-full p-3 border rounded-lg bg-gray-50" readonly>
+                        <p class="text-xs text-gray-500 mt-1">ชื่อเจ้าของบัญชีรับโอน</p>
+                    </div>
+
                     <!-- Slip Upload -->
                     <div id="slipUploadSection">
                         <label class="block text-sm font-medium mb-2">
@@ -175,17 +185,26 @@
                 // Clear existing options
                 bankSelect.innerHTML = '<option value="">-- เลือกธนาคาร --</option>';
                 
-                // Add default banks if BANK_ACCOUNTS not available
+                // Add default banks with account names if BANK_ACCOUNTS not available
                 const defaultBanks = {
-                    'ธนาคารกรุงเทพ': '1234567890',
-                    'ธนาคารกสิกรไทย': '0987654321',
-                    'ธนาคารไทยพาณิชย์': '1122334455'
+                    'ธนาคารกรุงเทพ': { 
+                        account: '1234567890',
+                        name: 'บริษัท ระบบออมทอง จำกัด'
+                    },
+                    'ธนาคารกสิกรไทย': { 
+                        account: '0987654321',
+                        name: 'บริษัท ระบบออมทอง จำกัด'
+                    },
+                    'ธนาคารไทยพาณิชย์': { 
+                        account: '1122334455',
+                        name: 'บริษัท ระบบออมทอง จำกัด'
+                    }
                 };
                 
                 const banksToUse = window.BANK_ACCOUNTS || defaultBanks;
                 
                 // Add new options based on BANK_ACCOUNTS
-                for (const [bankName, accountNumber] of Object.entries(banksToUse)) {
+                for (const [bankName, bankData] of Object.entries(banksToUse)) {
                     const option = document.createElement('option');
                     option.value = bankName;
                     option.textContent = bankName;
@@ -194,21 +213,47 @@
             }
         }
 
-        // Update account number based on bank selection
+        // Update account number and name based on bank selection
         function updateAccountNumber() {
             const bankSelect = document.getElementById('topupBank');
             const accountNumberField = document.getElementById('topupAccountNumber');
+            const accountNameField = document.getElementById('topupAccountName');
             
-            if (bankSelect && accountNumberField) {
+            if (bankSelect && accountNumberField && accountNameField) {
                 const selectedBank = bankSelect.value;
+                
                 const defaultBanks = {
-                    'ธนาคารกรุงเทพ': '1234567890',
-                    'ธนาคารกสิกรไทย': '0987654321',
-                    'ธนาคารไทยพาณิชย์': '1122334455'
+                    'ธนาคารกรุงเทพ': { 
+                        account: '1234567890',
+                        name: 'บริษัท ระบบออมทอง จำกัด'
+                    },
+                    'ธนาคารกสิกรไทย': { 
+                        account: '0987654321',
+                        name: 'บริษัท ระบบออมทอง จำกัด'
+                    },
+                    'ธนาคารไทยพาณิชย์': { 
+                        account: '1122334455',
+                        name: 'บริษัท ระบบออมทอง จำกัด'
+                    }
                 };
                 
                 const banksToUse = window.BANK_ACCOUNTS || defaultBanks;
-                accountNumberField.value = banksToUse[selectedBank] || '';
+                const bankData = banksToUse[selectedBank];
+                
+                if (bankData) {
+                    // Handle both old format (string) and new format (object)
+                    if (typeof bankData === 'string') {
+                        accountNumberField.value = bankData;
+                        accountNameField.value = 'บริษัท ระบบออมทอง จำกัด'; // Default name
+                    } else {
+                        accountNumberField.value = bankData.account || '';
+                        accountNameField.value = bankData.name || 'บริษัท ระบบออมทอง จำกัด';
+                    }
+                } else {
+                    accountNumberField.value = '';
+                    accountNameField.value = '';
+                }
+                
                 updateProcessSteps(selectedBank ? 2 : 1);
             }
         }
@@ -274,6 +319,7 @@
             const amount = parseFloat(document.getElementById('topupAmount').value);
             const bank = document.getElementById('topupBank').value;
             const account = document.getElementById('topupAccountNumber').value;
+            const accountName = document.getElementById('topupAccountName').value;
             const slipFile = document.getElementById('topupSlip').files[0];
 
             // Validate inputs
@@ -314,6 +360,7 @@
                         amount: amount,
                         bank: bank,
                         account: account,
+                        accountName: accountName,
                         base64: spt,
                         type: slipFile.type,
                         name: slipFile.name
@@ -341,6 +388,7 @@
                                             <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
                                             <p><strong>ธนาคาร:</strong> ${bank}</p>
                                             <p><strong>เลขที่บัญชี:</strong> ${account}</p>
+                                            <p><strong>ชื่อบัญชี:</strong> ${accountName}</p>
                                         </div>
                                     </div>
                                     <div class="bg-blue-50 p-4 rounded-lg">
@@ -376,6 +424,7 @@
                         amount: amount,
                         bank: bank,
                         account: account,
+                        accountName: accountName,
                         base64: null,
                         type: null,
                         name: null
