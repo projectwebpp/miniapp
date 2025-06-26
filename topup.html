@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เติมเงิน - ระบบออมทอง</title>
+    <title>ขายทอง - ระบบออมทอง</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -17,14 +17,14 @@
         <button onclick="goBack()" class="back-btn">
             <i class="fas fa-arrow-left"></i>
         </button>
-        <h1 class="page-title">เติมเงิน</h1>
+        <h1 class="page-title">ขายทอง</h1>
         <div class="w-10"></div> <!-- Spacer for center alignment -->
     </div>
 
-    <!-- Simplified Fast Loading Screen -->
+    <!-- Loading Screen - Simplified -->
     <div id="loading" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
         <div class="text-center">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500 mx-auto mb-3"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
             <p class="text-gray-600 text-sm">กำลังโหลด...</p>
         </div>
     </div>
@@ -32,114 +32,118 @@
     <!-- Main Content -->
     <div id="app" class="hidden page-container p-4">
         <div class="max-w-md mx-auto">
-            <!-- Process Steps -->
+            <!-- Current Prices Display -->
             <div class="bg-white rounded-lg shadow p-4 mb-6 card-hover">
-                <div class="process-steps mb-6">
-                    <div id="step1" class="step active">
-                        <div class="step-number">1</div>
-                        <div class="step-text">กรอกข้อมูล</div>
+                <h3 class="font-bold text-lg mb-4 text-center">
+                    <i class="fas fa-chart-line mr-2 text-red-500"></i>ราคารับซื้อวันนี้
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-3 bg-red-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองคำแท่ง</p>
+                        <p id="barSellPrice" class="font-bold text-red-600">฿0</p>
                     </div>
-                    <div id="step2" class="step">
-                        <div class="step-number">2</div>
-                        <div class="step-text">อัพโหลดสลิป</div>
-                    </div>
-                    <div id="step3" class="step">
-                        <div class="step-number">3</div>
-                        <div class="step-text">ยืนยันการเติมเงิน</div>
+                    <div class="text-center p-3 bg-red-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองรูปพรรณ</p>
+                        <p id="ornamentSellPrice" class="font-bold text-red-600">฿0</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Current Balance -->
+            <!-- Gold Holdings Display -->
             <div class="bg-white rounded-lg shadow p-4 mb-6 card-hover">
-                <div class="text-center">
-                    <p class="text-gray-500 text-sm mb-1">ยอดเงินปัจจุบัน</p>
-                    <p id="currentBalance" class="text-2xl font-bold text-blue-600">฿0.00</p>
+                <h3 class="font-bold text-lg mb-4 text-center">
+                    <i class="fas fa-coins mr-2 text-yellow-500"></i>ทองคำของคุณ
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองคำแท่ง</p>
+                        <p id="barGoldHolding" class="font-bold text-yellow-600">0 กรัม</p>
+                    </div>
+                    <div class="text-center p-3 bg-yellow-50 rounded-lg">
+                        <p class="text-sm text-gray-600 mb-1">ทองรูปพรรณ</p>
+                        <p id="ornamentGoldHolding" class="font-bold text-yellow-600">0 กรัม</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Top-up Form -->
+            <!-- Sell Form -->
             <div class="bg-white rounded-lg shadow p-6 card-hover">
                 <h2 class="text-xl font-bold mb-6 text-center">
-                    <i class="fas fa-plus-circle mr-2 text-blue-500"></i>เติมเงินเข้ากระเป๋า
+                    <i class="fas fa-hand-holding-usd mr-2 text-red-500"></i>ขายทอง
                 </h2>
                 
                 <div class="space-y-4">
-                    <!-- Amount -->
+                    <!-- Gold Type Selection -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
-                            <i class="fas fa-money-bill-wave mr-1"></i>จำนวนเงิน (บาท)
+                            <i class="fas fa-coins mr-1"></i>ประเภททอง
                         </label>
-                        <input type="number" id="topupAmount" step="0.01" min="100" placeholder="ขั้นต่ำ 100 บาท"
-                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <p class="text-xs text-gray-500 mt-1">จำนวนเงินขั้นต่ำ 100 บาท</p>
-                    </div>
-
-                    <!-- Bank Selection -->
-                    <div>
-                        <label class="block text-sm font-medium mb-2">
-                            <i class="fas fa-university mr-1"></i>ธนาคาร
-                        </label>
-                        <select id="topupBank" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" onchange="updateAccountNumber()">
-                            <!-- Options will be populated by JavaScript -->
+                        <select id="sellGoldType" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" onchange="updateSellPrice(); updateSellAvailable();">
+                            <option value="ornament">ทองรูปพรรณ 96.5%</option>
+                            <option value="bar">ทองคำแท่ง 96.5%</option>
                         </select>
                     </div>
 
-                    <!-- Account Number -->
+                    <!-- Available Amount Info -->
+                    <div id="sellAvailableInfo" class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                        <p class="text-sm text-gray-600">
+                            <i class="fas fa-info-circle mr-1"></i>ทองคงเหลือ: 
+                            <span id="sellAvailable" class="font-bold text-blue-600">0 กรัม</span>
+                        </p>
+                    </div>
+
+                    <!-- Unit Selection -->
                     <div>
                         <label class="block text-sm font-medium mb-2">
-                            <i class="fas fa-credit-card mr-1"></i>เลขที่บัญชี
+                            <i class="fas fa-weight mr-1"></i>เลือกหน่วย
                         </label>
-                        <div class="relative">
-                            <input type="text" id="topupAccountNumber" placeholder="เลขที่บัญชีจะแสดงอัตโนมัติ"
-                                   class="w-full p-3 border rounded-lg bg-gray-50" readonly>
-                            <button onclick="copyAccountNumber()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">คลิกที่ไอคอนเพื่อคัดลอกเลขบัญชี</p>
+                        <select id="sellUnit" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" onchange="updateSellAmount()">
+                            <option value="">-- เลือกหน่วย --</option>
+                            <option value="3.75">1 สลึง (3.75 กรัม)</option>
+                            <option value="7.5">2 สลึง (7.5 กรัม)</option>
+                            <option value="11.25">3 สลึง (11.25 กรัม)</option>
+                            <option value="15.2">1 บาท (15.2 กรัม)</option>
+                            <option value="30.4">2 บาท (30.4 กรัม)</option>
+                            <option value="45.6">3 บาท (45.6 กรัม)</option>
+                            <option value="60.8">4 บาท (60.8 กรัม)</option>
+                            <option value="76">5 บาท (76 กรัม)</option>
+                            <option value="custom">กำหนดเอง</option>
+                        </select>
                     </div>
 
-                    <!-- Slip Upload -->
-                    <div id="slipUploadSection">
+                    <!-- Amount -->
+                    <div>
                         <label class="block text-sm font-medium mb-2">
-                            <i class="fas fa-upload mr-1"></i>อัพโหลดสลิปโอนเงิน
+                            <i class="fas fa-balance-scale mr-1"></i>จำนวน (กรัม)
                         </label>
-                        <label id="topupSlipLabel" for="topupSlip" class="block w-full p-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition text-center">
-                            <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
-                            <p class="text-gray-600">ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์</p>
-                            <p class="text-xs text-gray-500 mt-1">รองรับ JPG, PNG ขนาดไม่เกิน 5MB</p>
-                        </label>
-                        <input type="file" id="topupSlip" accept="image/jpeg,image/png" class="hidden">
-                        
-                        <div id="filePreview" class="mt-3 hidden">
-                            <p id="topupFileName" class="text-sm text-gray-600 mb-2"></p>
-                            <img id="previewImage" src="" alt="Preview" class="file-preview mt-2 w-full max-h-48 object-cover rounded-lg">
-                            <button onclick="removeSlip()" class="mt-2 text-sm text-red-600 hover:text-red-800 btn-animate">
-                                <i class="fas fa-trash-alt mr-1"></i>ลบไฟล์
-                            </button>
-                        </div>
+                        <input type="number" id="sellAmount" step="0.01" min="0.01" placeholder="กรอกจำนวนกรัม"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500">
                     </div>
 
-                    <!-- Instructions -->
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                        <h4 class="font-semibold text-yellow-800 mb-2">
-                            <i class="fas fa-info-circle mr-1"></i>วิธีการเติมเงิน
-                        </h4>
-                        <ol class="text-sm text-yellow-700 space-y-1">
-                            <li>1. โอนเงินไปยังบัญชีที่แสดงด้านบน</li>
-                            <li>2. อัพโหลดสลิปการโอนเงิน</li>
-                            <li>3. กดยืนยันการเติมเงิน</li>
-                            <li>4. รอการตรวจสอบ 5-10 นาที</li>
-                        </ol>
+                    <!-- Price -->
+                    <div>
+                        <label class="block text-sm font-medium mb-2">
+                            <i class="fas fa-tag mr-1"></i>ราคาต่อบาท
+                        </label>
+                        <input type="number" id="sellPrice" step="0.01" min="1" placeholder="กรุณากรอกราคา"
+                               class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500" readonly>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="bg-red-50 p-4 rounded-lg border-2 border-red-200">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium text-red-800">
+                                <i class="fas fa-calculator mr-1"></i>ยอดรวม:
+                            </span>
+                            <span id="sellTotal" class="text-2xl font-bold text-red-600">฿0.00</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Buttons -->
                 <div class="flex space-x-3 mt-6">
-                    <button id="submitTopupBtn" onclick="submitTopup()" class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed btn-animate">
-                        <span id="submitText">ยืนยันการเติมเงิน</span>
-                        <span id="submitSpinner" class="spinner"></span>
+                    <button id="sellButton" onclick="sellGold()" class="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition btn-animate">
+                        <i class="fas fa-hand-holding-usd mr-2"></i>ยืนยันการขาย
                     </button>
                     <button onclick="goBack()" class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition btn-animate">
                         <i class="fas fa-times mr-2"></i>ยกเลิก
@@ -154,198 +158,278 @@
     <script>
         // Global Variables
         let userData = {};
-        let walletData = { balance: 0 };
-
-        // Fast loading management
-        function hideLoading() {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('app').classList.remove('hidden');
-        }
+        let currentGoldData = { totalGold: 0, avgPrice: 0, balances: { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } } };
 
         // Go back function
         function goBack() {
             window.history.back();
         }
 
-        // Update bank dropdowns in the UI
-        function updateBankDropdowns() {
-            const bankSelect = document.getElementById('topupBank');
+        // Hide loading screen immediately when content is ready
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+        }
+
+        // Show loading with timeout fallback
+        function showLoadingWithTimeout() {
+            const loadingElement = document.getElementById('loading');
+            const appElement = document.getElementById('app');
             
-            if (bankSelect) {
-                // Clear existing options
-                bankSelect.innerHTML = '<option value="">-- เลือกธนาคาร --</option>';
-                
-                // Add default banks if BANK_ACCOUNTS not available
-                const defaultBanks = {
-                    'ธนาคารกรุงเทพ': '1234567890',
-                    'ธนาคารกสิกรไทย': '0987654321',
-                    'ธนาคารไทยพาณิชย์': '1122334455'
-                };
-                
-                const banksToUse = window.BANK_ACCOUNTS || defaultBanks;
-                
-                // Add new options based on BANK_ACCOUNTS
-                for (const [bankName, accountNumber] of Object.entries(banksToUse)) {
-                    const option = document.createElement('option');
-                    option.value = bankName;
-                    option.textContent = bankName;
-                    bankSelect.appendChild(option);
-                }
-            }
-        }
-
-        // Update account number based on bank selection
-        function updateAccountNumber() {
-            const bankSelect = document.getElementById('topupBank');
-            const accountNumberField = document.getElementById('topupAccountNumber');
-            
-            if (bankSelect && accountNumberField) {
-                const selectedBank = bankSelect.value;
-                const defaultBanks = {
-                    'ธนาคารกรุงเทพ': '1234567890',
-                    'ธนาคารกสิกรไทย': '0987654321',
-                    'ธนาคารไทยพาณิชย์': '1122334455'
-                };
-                
-                const banksToUse = window.BANK_ACCOUNTS || defaultBanks;
-                accountNumberField.value = banksToUse[selectedBank] || '';
-                updateProcessSteps(selectedBank ? 2 : 1);
-            }
-        }
-
-        // Copy account number to clipboard
-        function copyAccountNumber() {
-            const accountNumber = document.getElementById('topupAccountNumber').value;
-            if (accountNumber) {
-                navigator.clipboard.writeText(accountNumber).then(() => {
-                    // Show feedback
-                    const copyBtn = event.target.closest('button');
-                    const originalIcon = copyBtn.innerHTML;
-                    copyBtn.innerHTML = '<i class="fas fa-check text-green-600"></i>';
-                    setTimeout(() => {
-                        copyBtn.innerHTML = originalIcon;
-                    }, 2000);
-                    
-                    // Show toast notification
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'คัดลอกเรียบร้อย',
-                        text: 'เลขที่บัญชีถูกคัดลอกแล้ว',
-                        timer: 1500,
-                        showConfirmButton: false,
-                        toast: true,
-                        position: 'top-end'
-                    });
-                }).catch(() => {
-                    Swal.fire('ข้อผิดพลาด', 'ไม่สามารถคัดลอกได้', 'error');
-                });
-            }
-        }
-
-        // Function to update process steps
-        function updateProcessSteps(step) {
-            // Reset all steps
-            document.querySelectorAll('.step').forEach(el => {
-                el.classList.remove('active', 'completed');
-            });
-
-            // Mark completed steps
-            for (let i = 1; i < step; i++) {
-                document.getElementById(`step${i}`).classList.add('completed');
-            }
-
-            // Mark current step
-            if (step <= 3) {
-                document.getElementById(`step${step}`).classList.add('active');
-            }
-        }
-
-        // Function to remove slip
-        function removeSlip() {
-            document.getElementById('topupSlip').value = '';
-            document.getElementById('filePreview').classList.add('hidden');
-            document.getElementById('previewImage').src = '';
-            document.getElementById('topupFileName').textContent = '';
-            updateProcessSteps(2);
-        }
-
-        // Submit top-up request
-        async function submitTopup() {
-            const amount = parseFloat(document.getElementById('topupAmount').value);
-            const bank = document.getElementById('topupBank').value;
-            const account = document.getElementById('topupAccountNumber').value;
-            const slipFile = document.getElementById('topupSlip').files[0];
-
-            // Validate inputs
-            if (!amount || amount < 100) {
-                Swal.fire('ผิดพลาด', 'กรุณากรอกจำนวนเงินที่ต้องการเติม (ขั้นต่ำ 100 บาท)', 'error');
-                return;
-            }
-            if (!bank) {
-                Swal.fire('ผิดพลาด', 'กรุณาเลือกธนาคาร', 'error');
-                return;
-            }
-            if (!slipFile) {
-                Swal.fire('ผิดพลาด', 'กรุณาอัพโหลดสลิปโอนเงิน', 'error');
-                return;
-            }
-
             // Show loading
-            Swal.fire({
-                title: 'กำลังบันทึก...',
-                text: 'กรุณารอสักครู่',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
+            loadingElement.classList.remove('hidden');
+            appElement.classList.add('hidden');
+            
+            // Auto-hide after 3 seconds as fallback
+            setTimeout(() => {
+                hideLoading();
+            }, 3000);
+        }
+
+        // Validation functions
+        function validateSellInput() {
+            const amount = parseFloat(document.getElementById('sellAmount').value);
+            const price = parseFloat(document.getElementById('sellPrice').value);
+            const goldType = document.getElementById('sellGoldType').value;
+
+            if (!amount || amount <= 0) {
+                return { valid: false, message: 'กรุณากรอกจำนวนทองที่ต้องการขาย' };
+            }
+
+            if (amount < 0.01) {
+                return { valid: false, message: 'จำนวนทองต้องมากกว่า 0.01 กรัม' };
+            }
+
+            if (!price || price <= 0) {
+                return { valid: false, message: 'กรุณากรอกราคาทองที่ถูกต้อง' };
+            }
+
+            if (price < 1) {
+                return { valid: false, message: 'ราคาทองต้องมากกว่า 1 บาท' };
+            }
+
+            // Check if user has enough gold of specified type
+            const typeBalance = currentGoldData.balances[goldType]?.totalGold || 0;
+            if (typeBalance <= 0) {
+                const goldTypeText = goldType === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+                return { valid: false, message: `คุณไม่มี${goldTypeText}ในระบบ` };
+            }
+
+            if (amount > typeBalance) {
+                const goldTypeText = goldType === 'bar' ? 'ทองคำแท่ง' : 'ทองรูปพรรณ';
+                return { valid: false, message: `คุณมี${goldTypeText}ไม่เพียงพอ (คงเหลือ ${formatNumber(typeBalance)} กรัม)` };
+            }
+
+            return { valid: true };
+        }
+
+        // Update price based on gold type
+        function updateSellPrice() {
+            const goldType = document.getElementById('sellGoldType').value;
+            const sellPriceInput = document.getElementById('sellPrice');
+            const price = currentGoldPrices[goldType]?.sellPrice || 0;
+            console.log(`Updating sell price for ${goldType}: ${price}`);
+            sellPriceInput.value = price > 0 ? formatNumber(price) : '';
+            sellPriceInput.placeholder = price > 0 ? 'กรุณากรอกราคา' : 'กรุณากรอกราคา (API ไม่มีข้อมูล)';
+            calculateSellTotal();
+        }
+
+        // Update available gold info in sell modal
+        function updateSellAvailable() {
+            const goldType = document.getElementById('sellGoldType').value;
+            const availableAmount = currentGoldData.balances[goldType]?.totalGold || 0;
+            document.getElementById('sellAvailable').textContent = formatNumber(availableAmount) + ' กรัม';
+
+            // Update info box color based on availability
+            const infoBox = document.getElementById('sellAvailableInfo');
+            if (availableAmount <= 0) {
+                infoBox.className = 'bg-red-50 p-3 rounded-lg border border-red-200';
+                document.getElementById('sellAvailable').className = 'font-bold text-red-600';
+            } else {
+                infoBox.className = 'bg-blue-50 p-3 rounded-lg border border-blue-200';
+                document.getElementById('sellAvailable').className = 'font-bold text-blue-600';
+            }
+
+            // Update button state
+            updateButtonState();
+        }
+
+        // Update amount based on unit selection
+        function updateSellAmount() {
+            const unit = document.getElementById('sellUnit').value;
+            const amountInput = document.getElementById('sellAmount');
+            const goldType = document.getElementById('sellGoldType').value;
+            const availableAmount = currentGoldData.balances[goldType]?.totalGold || 0;
+            
+            if (unit && unit !== 'custom') {
+                const requestedAmount = parseFloat(unit);
+                if (requestedAmount > availableAmount) {
+                    Swal.fire('ข้อผิดพลาด', `คุณมี${getGoldTypeText(goldType)}ไม่เพียงพอสำหรับ ${getGoldUnitText(requestedAmount)}`, 'error');
+                    document.getElementById('sellUnit').value = '';
+                    return;
                 }
+                amountInput.value = unit;
+                amountInput.readOnly = true;
+            } else {
+                amountInput.readOnly = false;
+                if (unit !== 'custom') {
+                    amountInput.value = '';
+                }
+            }
+            calculateSellTotal();
+        }
+
+        // Calculate total in real-time
+        function calculateSellTotal() {
+            const amount = parseFloat(document.getElementById('sellAmount').value) || 0;
+            const pricePerBaht = parseFloat(document.getElementById('sellPrice').value) || 0;
+            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const total = bahtEquivalent * pricePerBaht;
+            document.getElementById('sellTotal').textContent = '฿' + formatCurrency(total);
+            updateButtonState();
+        }
+
+        // Update button state
+        function updateButtonState() {
+            const sellButton = document.getElementById('sellButton');
+            const goldType = document.getElementById('sellGoldType').value;
+            const availableAmount = currentGoldData.balances[goldType]?.totalGold || 0;
+            
+            if (availableAmount <= 0) {
+                sellButton.disabled = true;
+                sellButton.className = 'flex-1 bg-gray-400 text-white py-3 rounded-lg font-semibold cursor-not-allowed';
+                sellButton.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>ไม่มีทองให้ขาย';
+            } else {
+                sellButton.disabled = false;
+                sellButton.className = 'flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition btn-animate';
+                sellButton.innerHTML = '<i class="fas fa-hand-holding-usd mr-2"></i>ยืนยันการขาย';
+            }
+        }
+
+        // Update price display
+        function updatePriceDisplay() {
+            document.getElementById('barSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.bar.sellPrice);
+            document.getElementById('ornamentSellPrice').textContent = '฿' + formatCurrency(currentGoldPrices.ornament.sellPrice);
+        }
+
+        // Update holdings display
+        function updateHoldingsDisplay() {
+            document.getElementById('barGoldHolding').textContent = formatNumber(currentGoldData.balances.bar?.totalGold || 0) + ' กรัม';
+            document.getElementById('ornamentGoldHolding').textContent = formatNumber(currentGoldData.balances.ornament?.totalGold || 0) + ' กรัม';
+        }
+
+        // Update wallet balance
+        async function updateWallet(amount, description, status) {
+            try {
+                const formData = new FormData();
+                formData.append('action', 'updateWallet');
+                formData.append('userId', userData.userId);
+                formData.append('amount', amount);
+                formData.append('description', description);
+                formData.append('status', status);
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('Error updating wallet:', data.message);
+                }
+            } catch (error) {
+                console.error('Error updating wallet:', error);
+            }
+        }
+
+        // Sell Gold function
+        async function sellGold() {
+            const validation = validateSellInput();
+            if (!validation.valid) {
+                Swal.fire('ข้อผิดพลาด', validation.message, 'error');
+                return;
+            }
+
+            const amount = parseFloat(document.getElementById('sellAmount').value);
+            const pricePerBaht = parseFloat(document.getElementById('sellPrice').value);
+            const goldType = document.getElementById('sellGoldType').value;
+            const bahtEquivalent = amount / GRAMS_PER_BAHT;
+            const total = bahtEquivalent * pricePerBaht;
+
+            const result = await Swal.fire({
+                title: 'ยืนยันการขาย',
+                html: `
+                    <div class="text-left space-y-2">
+                        <p><strong>ประเภท:</strong> ${getGoldTypeText(goldType)}</p>
+                        <p><strong>จำนวน:</strong> ${getGoldUnitText(amount)}</p>
+                        <p><strong>ราคา:</strong> ฿${formatCurrency(pricePerBaht)}/บาท</p>
+                        <p class="text-lg"><strong>รวม:</strong> <span class="text-red-600">฿${formatCurrency(total)}</span></p>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'ยืนยันการขาย',
+                cancelButtonText: 'ยกเลิก',
+                confirmButtonColor: '#ef4444'
             });
 
-            try {
-                // Use FileReader like in the example
-                let fr = new FileReader();
-                fr.addEventListener('loadend', () => {
-                    let res = fr.result;
-                    let spt = res.split("base64,")[1];
-                    
-                    // Prepare payload using the same structure as example
-                    let obj = {
-                        action: 'topup',
-                        userId: userData.userId,
-                        amount: amount,
-                        bank: bank,
-                        account: account,
-                        base64: spt,
-                        type: slipFile.type,
-                        name: slipFile.name
-                    };
+            if (result.isConfirmed) {
+                try {
+                    // Show loading
+                    Swal.fire({
+                        title: 'กำลังดำเนินการ...',
+                        html: 'กำลังบันทึกรายการขายทอง',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
 
-                    // Send data using the same method as example (without Content-Type header)
-                    fetch(API_URL, {
-                        method: "POST",
-                        body: JSON.stringify(obj)
-                    })
-                    .then(r => r.text())
-                    .then(data => {
-                        console.log('Response:', data);
+                    const formData = new FormData();
+                    formData.append('action', 'addTransaction');
+                    formData.append('userId', userData.userId);
+                    formData.append('userName', userData.name);
+                    formData.append('type', 'ขาย');
+                    formData.append('amount', amount);
+                    formData.append('price', pricePerBaht);
+                    formData.append('total', total);
+                    formData.append('goldType', goldType);
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const newBalance = currentGoldData.totalGold - amount;
+
+                        // Add to wallet
+                        await updateWallet(total, 'ขายทอง', 'สำเร็จ');
+
+                        // Send LINE message
+                        await sendFlexMessage('ขาย', amount, pricePerBaht, total, newBalance, goldType);
                         
-                        // ปิด Loading และแสดงข้อความสำเร็จ
-                        Swal.fire({
+                        // Show success alert with detailed information
+                        await Swal.fire({
                             icon: 'success',
-                            title: '🎉 เติมเงินสำเร็จ!',
+                            title: '🎉 ขายทองสำเร็จ!',
                             html: `
                                 <div class="text-center space-y-3">
                                     <div class="bg-green-50 p-4 rounded-lg">
-                                        <p class="text-lg font-semibold text-green-800">รายละเอียดการเติมเงิน</p>
+                                        <p class="text-lg font-semibold text-green-800">รายละเอียดการขาย</p>
                                         <hr class="my-2">
                                         <div class="text-left space-y-1">
-                                            <p><strong>จำนวนเงิน:</strong> ฿${formatCurrency(amount)}</p>
-                                            <p><strong>ธนาคาร:</strong> ${bank}</p>
-                                            <p><strong>เลขที่บัญชี:</strong> ${account}</p>
+                                            <p><strong>ประเภท:</strong> ${getGoldTypeText(goldType)}</p>
+                                            <p><strong>จำนวน:</strong> ${getGoldUnitText(amount)}</p>
+                                            <p><strong>ราคา:</strong> ฿${formatCurrency(pricePerBaht)}/บาท</p>
+                                            <p class="text-lg"><strong>เงินที่ได้รับ:</strong> <span class="text-green-600 font-bold">฿${formatCurrency(total)}</span></p>
                                         </div>
                                     </div>
                                     <div class="bg-blue-50 p-4 rounded-lg">
-                                        <p class="text-sm text-blue-800">💰 เงินจะเข้าบัญชีภายใน 5-10 นาที</p>
-                                        <p class="text-sm text-blue-800">📱 คุณจะได้รับการแจ้งเตือนผ่าน LINE</p>
+                                        <p class="text-sm text-blue-800">💰 เงินได้เข้ากระเป๋าเรียบร้อยแล้ว</p>
+                                        <p class="text-sm text-blue-800">🏆 ทองคงเหลือ: ${formatNumber(newBalance)} กรัม</p>
                                     </div>
                                 </div>
                             `,
@@ -353,280 +437,123 @@
                             confirmButtonColor: '#10b981',
                             allowOutsideClick: false
                         });
-                        
+
+                        // Go back to main page
                         window.location.href = 'index.html';
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'เกิดข้อผิดพลาด',
-                            text: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message
-                        });
-                    });
-                });
-
-                if (slipFile) {
-                    fr.readAsDataURL(slipFile);
-                } else {
-                    // กรณีไม่มีไฟล์รูปภาพ (แต่ในกรณีนี้เราได้ validate แล้วว่าต้องมีไฟล์)
-                    let obj = {
-                        action: 'topup',
-                        userId: userData.userId,
-                        amount: amount,
-                        bank: bank,
-                        account: account,
-                        base64: null,
-                        type: null,
-                        name: null
-                    };
-                    
-                    fetch(API_URL, {
-                        method: "POST",
-                        body: JSON.stringify(obj)
-                    })
-                    .then(r => r.text())
-                    .then(data => {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'บันทึกสำเร็จ!',
-                            text: 'ข้อมูลถูกบันทึกเรียบร้อยแล้ว',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                        console.log(data);
-                    })
-                    .catch(error => {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'เกิดข้อผิดพลาด',
-                            text: 'ไม่สามารถบันทึกข้อมูลได้: ' + error.message
-                        });
-                        console.error('Error:', error);
-                    });
+                    } else {
+                        Swal.fire('ข้อผิดพลาด', data.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error selling gold:', error);
+                    Swal.fire('ข้อผิดพลาด', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
                 }
-
-            } catch (error) {
-                console.error('Error:', error);
-                Swal.fire('ผิดพลาด', error.message || 'เกิดข้อผิดพลาดในการเติมเงิน', 'error');
             }
         }
 
-        // Load Wallet Data with simplified error handling
-        async function loadWalletData() {
+        // Load Gold Data with faster execution
+        async function loadGoldData() {
             try {
-                const response = await fetch(`${API_URL}?action=getWallet&userId=${userData.userId}`);
+                const response = await fetch(`${API_URL}?action=getBalance&userId=${userData.userId}`);
                 const data = await response.json();
                 if (data.success) {
-                    walletData.balance = data.balance || 0;
-                    document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                    currentGoldData.totalGold = data.totalGold || 0;
+                    currentGoldData.avgPrice = data.avgPrice || 0;
+                    currentGoldData.balances = data.balances || { bar: { totalGold: 0, avgPrice: 0 }, ornament: { totalGold: 0, avgPrice: 0 } };
+                    updateHoldingsDisplay();
+                    updateSellAvailable();
                 }
             } catch (error) {
-                console.error('Error loading wallet data:', error);
-                // Continue with mock data
-                walletData.balance = 1000;
-                document.getElementById('currentBalance').textContent = '฿' + formatCurrency(walletData.balance);
+                console.error('Error loading gold data:', error);
+                // Continue even if gold data fails
             }
         }
 
-        // Initialize LIFF with fast loading
+        // Initialize LIFF with optimized loading
         window.onload = async function() {
             try {
-                // Show app immediately
-                setTimeout(hideLoading, 50);
+                // Show app immediately with placeholder data
+                setTimeout(() => {
+                    hideLoading();
+                }, 100);
 
-                // Check configuration
-                if (!window.LIFF_ID || window.LIFF_ID === 'YOUR_LIFF_ID') {
-                    console.warn('LIFF_ID not configured, using mock data');
-                    userData = {
-                        userId: 'test_user_123',
-                        name: 'ผู้ทดสอบ',
-                        picture: ''
-                    };
-                    initApp();
+                // ตรวจสอบการตั้งค่า LIFF_ID
+                if (!LIFF_ID || LIFF_ID === 'YOUR_LIFF_ID') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ข้อผิดพลาดการตั้งค่า',
+                        text: 'กรุณาตั้งค่า LIFF_ID ใน config.js',
+                        confirmButtonColor: '#ef4444'
+                    });
                     return;
                 }
 
-                if (typeof liff === 'undefined') {
-                    throw new Error('LIFF SDK not loaded');
-                }
-
                 await liff.init({ liffId: LIFF_ID });
-                
-                // Try to fetch bank accounts in background
-                if (window.fetchBankAccounts) {
-                    fetchBankAccounts().catch(err => {
-                        console.warn('Failed to fetch bank accounts:', err);
-                    });
-                }
-                
                 if (liff.isLoggedIn()) {
+                    // Start initialization without waiting for prices
                     initApp();
+                    
+                    // Fetch prices in background
+                    fetchGoldPrices().then(pricesFetched => {
+                        console.log('Price fetch completed:', pricesFetched);
+                        updatePriceDisplay();
+                        updateSellPrice();
+                    }).catch(err => {
+                        console.warn('Price fetch failed, using default values:', err);
+                    });
                 } else {
                     liff.login();
                 }
             } catch (err) {
                 console.error('LIFF init failed:', err);
-                // Use mock data for testing
-                userData = {
-                    userId: 'test_user_123',
-                    name: 'ผู้ทดสอบ',
-                    picture: ''
-                };
-                initApp();
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับ LINE ได้: ' + err.message, 'error');
             }
         };
 
-        // Initialize App with fast execution
+        // Initialize App with faster execution
         async function initApp() {
             try {
-                // Get user profile if not available
-                if (!userData.userId) {
-                    if (typeof liff !== 'undefined' && liff.isLoggedIn()) {
-                        const profile = await liff.getProfile();
-                        userData = {
-                            userId: profile.userId,
-                            name: profile.displayName,
-                            picture: profile.pictureUrl
-                        };
+                const profile = await liff.getProfile();
+                userData = {
+                    userId: profile.userId,
+                    name: profile.displayName,
+                    picture: profile.pictureUrl
+                };
+                window.userData = userData;
+                
+                // Load data in background, don't wait
+                loadGoldData().then(() => {
+                    // Check if user has any gold after data loads
+                    if (currentGoldData.totalGold <= 0) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'ไม่มีทองคำในระบบ',
+                            text: 'คุณยังไม่มีทองคำในระบบ กรุณาซื้อทองก่อน',
+                            confirmButtonText: 'ไปซื้อทอง',
+                            showCancelButton: true,
+                            cancelButtonText: 'กลับหน้าหลัก'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.href = 'buy.html';
+                            } else {
+                                window.location.href = 'index.html';
+                            }
+                        });
+                        return;
                     }
-                }
-
-                // Initialize UI immediately
-                updateBankDropdowns();
-                updateProcessSteps(1);
-                setupEventListeners();
-
-                // Load wallet data in background
-                loadWalletData();
-
+                });
+                
+                // Set up event listeners immediately
+                document.getElementById('sellAmount').addEventListener('input', calculateSellTotal);
+                document.getElementById('sellPrice').addEventListener('input', calculateSellTotal);
+                
+                // Initialize UI with default values
+                updateSellPrice();
+                updatePriceDisplay();
+                
             } catch (error) {
                 console.error('Error initializing app:', error);
+                Swal.fire('ข้อผิดพลาด', 'ไม่สามารถเริ่มต้นแอปได้', 'error');
             }
-        }
-
-        // Setup all event listeners
-        function setupEventListeners() {
-            // Real-time amount validation
-            document.getElementById('topupAmount').addEventListener('input', function() {
-                const amount = parseFloat(this.value) || 0;
-                const submitBtn = document.getElementById('submitTopupBtn');
-
-                if (amount < 100) {
-                    submitBtn.disabled = true;
-                    this.style.borderColor = '#ef4444';
-                } else {
-                    submitBtn.disabled = false;
-                    this.style.borderColor = '#10b981';
-                }
-            });
-
-            // File upload setup
-            const fileInput = document.getElementById('topupSlip');
-            const fileLabel = document.getElementById('topupSlipLabel');
-            const filePreview = document.getElementById('filePreview');
-            const fileName = document.getElementById('topupFileName');
-            const previewImage = document.getElementById('previewImage');
-
-            // Define constants
-            const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png'];
-            const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
-            // File input change handler
-            fileInput.addEventListener('change', function(e) {
-                if (e.target.files.length > 0) {
-                    const file = e.target.files[0];
-
-                    // Validate file type
-                    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'ประเภทไฟล์ไม่ถูกต้อง',
-                            text: 'ไฟล์ต้องเป็นรูปภาพ JPG หรือ PNG เท่านั้น',
-                            confirmButtonColor: '#3b82f6'
-                        });
-                        fileInput.value = '';
-                        return;
-                    }
-
-                    // Validate file size
-                    if (file.size > MAX_FILE_SIZE) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'ไฟล์มีขนาดใหญ่เกินไป',
-                            text: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
-                            confirmButtonColor: '#3b82f6'
-                        });
-                        fileInput.value = '';
-                        return;
-                    }
-
-                    // Show file preview
-                    fileName.textContent = file.name;
-                    filePreview.classList.remove('hidden');
-                    updateProcessSteps(3);
-
-                    // Show preview image
-                    const reader = new FileReader();
-                    reader.onload = function(event) {
-                        previewImage.src = event.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-            // Drag and drop functionality
-            fileLabel.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                fileLabel.classList.add('border-blue-500', 'bg-blue-50');
-                fileLabel.querySelector('p').textContent = 'ปล่อยไฟล์ที่นี่เพื่ออัพโหลด';
-            });
-
-            fileLabel.addEventListener('dragleave', function() {
-                fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
-                fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
-            });
-
-            fileLabel.addEventListener('drop', function(e) {
-                e.preventDefault();
-                fileLabel.classList.remove('border-blue-500', 'bg-blue-50');
-                fileLabel.querySelector('p').textContent = 'ลากไฟล์มาวางที่นี่หรือคลิกเพื่อเลือกไฟล์';
-
-                if (e.dataTransfer.files.length > 0) {
-                    const file = e.dataTransfer.files[0];
-
-                    // Validate file type
-                    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'ประเภทไฟล์ไม่ถูกต้อง',
-                            text: 'ไฟล์ต้องเป็นรูปภาพ JPG หรือ PNG เท่านั้น',
-                            confirmButtonColor: '#3b82f6'
-                        });
-                        return;
-                    }
-
-                    // Validate file size
-                    if (file.size > MAX_FILE_SIZE) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'ไฟล์มีขนาดใหญ่เกินไป',
-                            text: 'ขนาดไฟล์ต้องไม่เกิน 5MB',
-                            confirmButtonColor: '#3b82f6'
-                        });
-                        return;
-                    }
-
-                    // Set file to input
-                    const dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(file);
-                    fileInput.files = dataTransfer.files;
-
-                    // Trigger change event
-                    const event = new Event('change');
-                    fileInput.dispatchEvent(event);
-                }
-            });
         }
     </script>
 </body>
